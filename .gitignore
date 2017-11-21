@@ -52,7 +52,14 @@ firmware/melfas_tk/mhs2041_j5y17.fw
 firmware/melfas_tk/mhs2041_j5y17.fw.gen.S
 firmware/melfas_tk/mhs2041_j7y17.fw
 firmware/melfas_tk/mhs2041_j7y17.fw.gen.S
-net/wireless/regdb.c
+firmware/tsp_stm/fts1a096_gtaxl_note.fw
+firmware/tsp_stm/fts1a096_gtaxl_note.fw.gen.S
+firmware/tsp_stm/fts1a096_gtaxl_rev03.fw
+firmware/tsp_stm/fts1a096_gtaxl_rev03.fw.gen.S
+firmware/tsp_stm/matisse.fw
+firmware/tsp_stm/matisse.fw.gen.S
+firmware/tsp_stm/stm_gtaxl.fw
+firmware/tsp_stm/stm_gtaxl.fw.gen.S
 firmware/coreriver/tc305k_j7pop.fw
 firmware/coreriver/tc305k_j7pop.fw.gen.S
 firmware/coreriver/tc350k_j7ve.fw
@@ -86,6 +93,7 @@ kernel/time/timeconst.h
 lib/crc32table.h
 lib/gen_crc32table
 lib/lib.a
+net/wireless/regdb.c
 scripts/genksyms/genksyms
 scripts/genksyms/keywords.hash.c
 scripts/genksyms/lex.lex.c
@@ -115,6 +123,7 @@ usr/.initramfs_data.cpio.d
 usr/gen_init_cpio
 usr/initramfs_data.cpio.gz
 vmlinux
+.tmp_versions/
 
 *.builtin
 !.gitignore

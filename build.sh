@@ -35,6 +35,27 @@ j7_2016()  #Device 2
 	DTSFILES="exynos7870-j7xelte_eur_open_00 exynos7870-j7xelte_eur_open_01 exynos7870-j7xelte_eur_open_02 exynos7870-j7xelte_eur_open_03 exynos7870-j7xelte_eur_open_04"
 }
 
+j7_pro()   #Device 3
+{
+	DEVICE='J7-Pro'
+	DEFCONFIG=Oxygen_j7y17lte_defconfig
+	DTSFILES="exynos7870-j7y17lte_eur_openm_00 exynos7870-j7y17lte_eur_openm_01 exynos7870-j7y17lte_eur_openm_02 exynos7870-j7y17lte_eur_openm_03 exynos7870-j7y17lte_eur_openm_04 exynos7870-j7y17lte_eur_openm_05 exynos7870-j7y17lte_eur_openm_06 exynos7870-j7y17lte_eur_openm_07"
+}
+
+j7_nxt()   #Device 4
+{
+	DEVICE='J7-Nxt'
+	DEFCONFIG=Oxygen_j7velte_defconfig
+	DTSFILES="exynos7870-j7velte_sea_open_00 exynos7870-j7velte_sea_open_01 exynos7870-j7velte_sea_open_03"
+}
+
+tab_a()    #Device 5
+{
+	DEVICE='Tab-A-10.1'
+	DEFCONFIG=Oxygen_gtaxllte_defconfig
+	DTSFILES="exynos7870-gtaxllte_eur_open_00 exynos7870-gtaxllte_eur_open_01 exynos7870-gtaxllte_eur_open_04 exynos7870-gtaxllte_eur_open_05"
+}
+
 ###########################
 # Setup Build Environment #
 ###########################
@@ -65,6 +86,7 @@ clean_residue()
 	rm -r $AIK_DIR/split_img
 	rm -rf $AIK_DIR/ramdisk-new.cpio.gz
 	rm -r $ZIP_DIR/META-INF
+	rm -r $ZIP_DIR/boot.img
 }
 
 clean_junk()
@@ -77,6 +99,7 @@ clean_junk()
 	rm -rf $RAMDISK_DIR/*/split_img/boot.img-zImage
 	rm -rf $RAMDISK_DIR/*/split_img/boot.img-dtb
 	rm -rf $ZIP_DIR/oxygenkernel/anykernel2/anykernel2.zip
+	rm -rf $ROOT_DIR/crypto/ansi_cprng.ko
 }
 
 clean_dir()
@@ -89,13 +112,14 @@ clean_dir()
 build()
 {
 	KERNEL_VERSION=$(<$BUILD_DIR/version/$DEVICE)
+	rm -rf $ROOT_DIR/crypto/ansi_cprng.ko
+	rm -rf $RAMDISK_DIR/*/ramdisk/lib/modules/ansi_cprng.ko
 	echo -e "\n==============================================================================================================================================="
 	echo " Device      =   $DEVICE "
 	echo " Defconfig   =   $DEFCONFIG "
 	echo " Version     =   $KERNEL_VERSION "
 	echo -e "===============================================================================================================================================\n"
 	echo -e $GREEN"Starting Build Process for $DEVICE\n"$DEFAULT
-sleep 5
 	clean_junk
 	build_kernel
 	build_anykernel
@@ -156,6 +180,9 @@ build_zip()
 	mv $ROOT_DIR/arch/arm64/boot/Image $RAMDISK_DIR/$DEVICE/split_img/boot.img-zImage
 	mv $ROOT_DIR/arch/arm64/boot/dtb.img $RAMDISK_DIR/$DEVICE/split_img/boot.img-dtb
 	cp -r $RAMDISK_DIR/$DEVICE/* $AIK_DIR
+	if [ -e $ROOT_DIR/crypto/ansi_cprng.ko ]; then
+	mv $ROOT_DIR/crypto/ansi_cprng.ko $AIK_DIR/ramdisk/lib/modules/ansi_cprng.ko
+	fi
 	cd $AIK_DIR
 	find . -name \.placeholder -type f -delete
 	./repackimg.sh
@@ -201,6 +228,9 @@ echo
 echo "	  	      0  = Clean Directory             |     l  = Open Build_kernel.log"
 echo "		      1  = Build Kernel for J7 Prime   |" 
 echo "		      2  = Build Kernel for J7 2016    |"
+echo "		      3  = Build Kernel for J7 Pro     |"
+echo "		      4  = Build Kernel for J7 Nxt     |"
+echo "		      5  = Build Kernel for Tab A 10.1 |"
 echo 
 echo -e "===============================================================================================================================================\n"
 read -p "Select an option " option
@@ -216,6 +246,21 @@ case "$option" in
 	2)
 		clear
 		j7_2016
+		build
+		;;
+	3)
+		clear
+		j7_pro
+		build
+		;;
+	4)
+		clear
+		j7_nxt
+		build
+		;;
+	5)
+		clear
+		tab_a
 		build
 		;;
 	l)
