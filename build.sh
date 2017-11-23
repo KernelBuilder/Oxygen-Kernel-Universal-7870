@@ -122,6 +122,15 @@ build()
 	echo -e $GREEN"Starting Build Process for $DEVICE\n"$DEFAULT
 	clean_junk
 	build_kernel
+	# Check If Kernel Is Built
+	if [ -e $ROOT_DIR/arch/arm64/boot/Image ]; then
+		echo -e $GREEN"\nKernel Sussfully Built\n"$DEFAULT
+	else
+		echo -e $RED"\nKernel Build Failed\n"$DEFAULT
+				return
+	fi
+	#Proceed if everything OK!
+	build_dtb
 	build_anykernel
 	build_zip
 }
@@ -137,21 +146,10 @@ build_kernel()
 	# Build Image
 	echo -e $GREEN"\nStarting To Build Image\n"$DEFAULT
 	time make -j$NUM_CPUS 2>&1 |tee $BUILD_DIR/build_kernel.log
-	
-	# Check If Kernel Is Built
-	if [ -e $ROOT_DIR/arch/arm64/boot/Image ]; then
-		echo -e $GREEN"Kernel Sussfully Built\n"$DEFAULT
-	else
-		echo -e $RED"Kernel Build Failed\n"$DEFAULT
-		read -p "Press any key to exit " option
-		case "$option" in
-			*)
-				exit
-				;;
-		esac
-	fi
-	echo -e $GREEN"Starting To Build Image\n"$DEFAULT
+}
 
+build_dtb()
+{
 	# Build DTB
 	mkdir -p $ROOT_DIR/arch/arm64/boot/dtb && cd $ROOT_DIR/arch/arm64/boot/dtb && rm -rf *
 	echo -e $GREEN"Starting To Build DTB\n"$DEFAULT
