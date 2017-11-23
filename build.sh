@@ -92,7 +92,6 @@ clean_residue()
 clean_junk()
 {
 	echo -e $GREEN"Cleaning Previous Build Junk\n"$DEFAULT
-	rm -rf $BUILD_DIR/*log
 	rm -rf $ZIP_DIR/z*
 	rm -rf $ZIP_DIR/*.zip
 	rm -rf $ZIP_DIR/boot.img
@@ -106,6 +105,7 @@ clean_dir()
 {
 	echo -e $RED"Cleaning Directory\n"$DEFAULT
 	make clean && make mrproper
+	rm -rf $BUILD_DIR/*log
 	clean_junk
 }
 
@@ -145,7 +145,7 @@ build_kernel()
 	
 	# Build Image
 	echo -e $GREEN"\nStarting To Build Image\n"$DEFAULT
-	time make -j$NUM_CPUS 2>&1 |tee $BUILD_DIR/build_kernel.log
+	time make -j$NUM_CPUS 2>&1 |tee $BUILD_DIR/$DEVICE.log
 }
 
 build_dtb()
