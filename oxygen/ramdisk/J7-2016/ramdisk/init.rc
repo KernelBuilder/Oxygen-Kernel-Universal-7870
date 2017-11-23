@@ -1529,8 +1529,8 @@ on property:ro.debuggable=1
     chmod 0773 /data/misc/trace
     start console
 
-# service vaultkeeperd /system/bin/vaultkeeperd
-#    class core
+service vaultkeeperd /system/bin/vaultkeeperd
+    class core
 
 service drm /system/bin/drmserver
     class main
