@@ -77,5 +77,3 @@ obj-$(CONFIG_TIMA_LOG)		+= tima_debug_log.o
 # for DMVerity
 obj-$(CONFIG_DM_VERITY)		+= dmverity_query.o
 
-# FPGA for IRIS
-obj-$(CONFIG_LEDS_IRIS_FPGA_ICE40XX)  += ice40xx_iris.o

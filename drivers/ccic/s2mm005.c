@@ -31,7 +31,6 @@ static enum dual_role_property fusb_drp_properties[] = {
 	DUAL_ROLE_PROP_MODE,
 	DUAL_ROLE_PROP_PR,
 	DUAL_ROLE_PROP_DR,
-	DUAL_ROLE_PROP_VCONN_SUPPLY,
 };
 #endif
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,9 +65,7 @@ int s2mm005_read_byte(const struct i2c_client *i2c, u16 reg, u8 *val, u16 size)
 	int ret, i2c_retry; u8 wbuf[2];
 	struct i2c_msg msg[2];
 	struct s2mm005_data *usbpd_data = i2c_get_clientdata(i2c);
-#if defined(CONFIG_USB_HW_PARAM)	
 	struct otg_notify *o_notify = get_otg_notify();
-#endif
 
 	mutex_lock(&usbpd_data->i2c_mutex);
 	i2c_retry = 0;
@@ -89,10 +86,8 @@ int s2mm005_read_byte(const struct i2c_client *i2c, u16 reg, u8 *val, u16 size)
 	} while (ret < 0 &&  i2c_retry++ < 5);
 
 	if (ret < 0) {
-#if defined(CONFIG_USB_HW_PARAM)
 		if (o_notify)
-			inc_hw_param(o_notify, USB_CCIC_I2C_ERROR_COUNT);
-#endif
+			o_notify->hw_param[USB_CCIC_I2C_ERROR_COUNT]++;
 		dev_err(&i2c->dev, "i2c read16 fail reg:0x%x error %d\n", reg, ret);
 	}
 	mutex_unlock(&usbpd_data->i2c_mutex);
@@ -105,9 +100,7 @@ int s2mm005_read_byte_flash(const struct i2c_client *i2c, u16 reg, u8 *val, u16 
 	int ret; u8 wbuf[2];
 	struct i2c_msg msg[2];
 	struct s2mm005_data *usbpd_data = i2c_get_clientdata(i2c);
-#if defined(CONFIG_USB_HW_PARAM)	
 	struct otg_notify *o_notify = get_otg_notify();
-#endif
 
 	u8 W_DATA[1];
 	udelay(20);
@@ -130,10 +123,8 @@ int s2mm005_read_byte_flash(const struct i2c_client *i2c, u16 reg, u8 *val, u16 
 
 	ret = i2c_transfer(i2c->adapter, msg, ARRAY_SIZE(msg));
 	if (ret < 0) {
-#if defined(CONFIG_USB_HW_PARAM)
 		if (o_notify)
-			inc_hw_param(o_notify, USB_CCIC_I2C_ERROR_COUNT);
-#endif
+			o_notify->hw_param[USB_CCIC_I2C_ERROR_COUNT]++;
 		dev_err(&i2c->dev, "i2c read16 fail reg:0x%x error %d\n", reg, ret);
 	}
 	mutex_unlock(&usbpd_data->i2c_mutex);
@@ -146,9 +137,7 @@ int s2mm005_write_byte(const struct i2c_client *i2c, u16 reg, u8 *val, u16 size)
 	int ret, i2c_retry; u8 buf[258] = {0,};
 	struct i2c_msg msg[1];
 	struct s2mm005_data *usbpd_data = i2c_get_clientdata(i2c);
-#if defined(CONFIG_USB_HW_PARAM)	
 	struct otg_notify *o_notify = get_otg_notify();
-#endif
 
 	if (size > 256)
 	{
@@ -172,10 +161,8 @@ int s2mm005_write_byte(const struct i2c_client *i2c, u16 reg, u8 *val, u16 size)
 	} while (ret < 0 &&  i2c_retry++ < 5);
 
 	if (ret < 0) {
-#if defined(CONFIG_USB_HW_PARAM)
 		if (o_notify)
-			inc_hw_param(o_notify, USB_CCIC_I2C_ERROR_COUNT);
-#endif
+			o_notify->hw_param[USB_CCIC_I2C_ERROR_COUNT]++;
 		dev_err(&i2c->dev, "i2c write fail reg:0x%x error %d\n", reg, ret);
 	}
 	mutex_unlock(&usbpd_data->i2c_mutex);
@@ -188,9 +175,7 @@ int s2mm005_read_byte_16(const struct i2c_client *i2c, u16 reg, u8 *val)
 	int ret; u8 wbuf[2], rbuf;
 	struct i2c_msg msg[2];
 	struct s2mm005_data *usbpd_data = i2c_get_clientdata(i2c);
-#if defined(CONFIG_USB_HW_PARAM)	
 	struct otg_notify *o_notify = get_otg_notify();
-#endif
 
 	mutex_lock(&usbpd_data->i2c_mutex);
 	msg[0].addr = i2c->addr;
@@ -207,10 +192,8 @@ int s2mm005_read_byte_16(const struct i2c_client *i2c, u16 reg, u8 *val)
 
 	ret = i2c_transfer(i2c->adapter, msg, 2);
 	if (ret < 0) {
-#if defined(CONFIG_USB_HW_PARAM)
 		if (o_notify)
-			inc_hw_param(o_notify, USB_CCIC_I2C_ERROR_COUNT);
-#endif
+			o_notify->hw_param[USB_CCIC_I2C_ERROR_COUNT]++;
 		dev_err(&i2c->dev, "i2c read16 fail reg(0x%x), error %d\n", reg, ret);
 	}
 	mutex_unlock(&usbpd_data->i2c_mutex);
@@ -224,9 +207,7 @@ int s2mm005_write_byte_16(const struct i2c_client *i2c, u16 reg, u8 val)
 	int ret = 0; u8 wbuf[3];
 	struct i2c_msg msg[1];
 	struct s2mm005_data *usbpd_data = i2c_get_clientdata(i2c);
-#if defined(CONFIG_USB_HW_PARAM)
 	struct otg_notify *o_notify = get_otg_notify();
-#endif
 
 	mutex_lock(&usbpd_data->i2c_mutex);
 	msg[0].addr = i2c->addr;
@@ -240,10 +221,8 @@ int s2mm005_write_byte_16(const struct i2c_client *i2c, u16 reg, u8 val)
 
 	ret = i2c_transfer(i2c->adapter, msg, 1);
 	if (ret < 0) {
-#if defined(CONFIG_USB_HW_PARAM)
 		if (o_notify)
-			inc_hw_param(o_notify, USB_CCIC_I2C_ERROR_COUNT);
-#endif
+			o_notify->hw_param[USB_CCIC_I2C_ERROR_COUNT]++;
 		dev_err(&i2c->dev, "i2c write fail reg(0x%x:%x), error %d\n", reg, val, ret);
 	}
 	mutex_unlock(&usbpd_data->i2c_mutex);
@@ -254,7 +233,7 @@ int s2mm005_write_byte_16(const struct i2c_client *i2c, u16 reg, u8 val)
 void s2mm005_int_clear(struct s2mm005_data *usbpd_data)
 {
 	struct i2c_client *i2c = usbpd_data->i2c;
-
+	pr_info("%s : -- clear clear -- \n", __func__);
 	s2mm005_write_byte_16(i2c, 0x10, 0x1);
 }
 
@@ -266,6 +245,7 @@ void s2mm005_reset(struct s2mm005_data *usbpd_data)
 	u8 R_DATA[1];
 	int i;
 
+	pr_info("%s\n", __func__);
 	/* for Wake up*/
 	for(i=0; i<5; i++){
 		R_DATA[0] = 0x00;
@@ -632,9 +612,6 @@ static int of_s2mm005_usbpd_dt(struct device *dev,
 	usbpd_data->s2mm005_om = of_get_named_gpio(np, "usbpd,s2mm005_om", 0);
 	usbpd_data->s2mm005_sda = of_get_named_gpio(np, "usbpd,s2mm005_sda", 0);
 	usbpd_data->s2mm005_scl = of_get_named_gpio(np, "usbpd,s2mm005_scl", 0);
-	if(of_property_read_u32(np, "usbpd,s2mm005_fw_product_id", &usbpd_data->s2mm005_fw_product_id)) {
-		usbpd_data->s2mm005_fw_product_id = 0x01;
-	}
 
 	np = of_find_all_nodes(NULL);
 	ret = of_property_read_u32(np, "model_info-hw_rev", &usbpd_data->hw_rev);
@@ -644,11 +621,10 @@ static int of_s2mm005_usbpd_dt(struct device *dev,
 	}
 
 	dev_err(dev, "hw_rev:%02d usbpd_irq = %d redriver_en = %d s2mm005_om = %d\n"
-		"s2mm005_sda = %d, s2mm005_scl = %d, fw_product_id=0x%02X\n",
+		"s2mm005_sda = %d, s2mm005_scl = %d\n",
 		usbpd_data->hw_rev,
 		usbpd_data->irq_gpio, usbpd_data->redriver_en, usbpd_data->s2mm005_om,
-		usbpd_data->s2mm005_sda, usbpd_data->s2mm005_scl,
-		usbpd_data->s2mm005_fw_product_id);
+		usbpd_data->s2mm005_sda, usbpd_data->s2mm005_scl);
 
 	return 0;
 }
@@ -680,9 +656,6 @@ static int s2mm005_usbpd_probe(struct i2c_client *i2c,
 	uint8_t MSG_BUF[32] = {0,};
 	SINK_VAR_SUPPLY_Typedef *pSINK_MSG;
 	MSG_HEADER_Typedef *pMSG_HEADER;
-#if defined(CONFIG_SEC_FACTORY)
-	LP_STATE_Type Lp_DATA;
-#endif
 	uint32_t * MSG_DATA;
 	uint8_t cnt;
 	u8 W_DATA[8];
@@ -824,28 +797,18 @@ static int s2mm005_usbpd_probe(struct i2c_client *i2c,
 	pr_err("%s CHIP SWversion %2x %2x %2x %2x\n", __func__,
 	       chip_swver.main[2] , chip_swver.main[1], chip_swver.main[0], chip_swver.boot);
 
-	s2mm005_get_fw_version(usbpd_data->s2mm005_fw_product_id,
-		&fw_swver, chip_swver.boot, usbpd_data->hw_rev);
+	s2mm005_get_fw_version(&fw_swver, chip_swver.boot, usbpd_data->hw_rev);
 	pr_err("%s SRC SWversion:%2x,%2x,%2x,%2x\n",__func__,
 		fw_swver.main[2], fw_swver.main[1], fw_swver.main[0], fw_swver.boot);
-	pr_err("%s: FW UPDATE boot:%01d hw_rev:%02d\n", __func__,
-		chip_swver.boot, usbpd_data->hw_rev);
 
-	usbpd_data->fw_product_id = fw_swver.main[2];
+	pr_err("%s: FW UPDATE boot:%01d hw_rev:%02d\n", __func__, chip_swver.boot, usbpd_data->hw_rev);
 
-#if defined(CONFIG_SEC_FACTORY)
-	s2mm005_read_byte(i2c, 0x60, Lp_DATA.BYTE, 4);
-	pr_err("%s: WATER reg:0x%02X BOOTING_RUN_DRY=%d\n", __func__,
-		Lp_DATA.BYTE[0], Lp_DATA.BITS.BOOTING_RUN_DRY);
-	
-	usbpd_data->fac_booting_dry_check = Lp_DATA.BITS.BOOTING_RUN_DRY;
-#endif
+	usbpd_data->fw_product_num = fw_swver.main[2];
 
 	if (chip_swver.boot == 0x7) {
 #ifdef CONFIG_SEC_FACTORY
-		if ((chip_swver.main[0] != fw_swver.main[0]) /* main version */
-			|| (chip_swver.main[1] != fw_swver.main[1]) /* sub version */
-			|| (chip_swver.main[2] != fw_swver.main[2]))  /* product id */
+		if ((chip_swver.main[0] != fw_swver.main[0])
+			|| (chip_swver.main[1] != fw_swver.main[1]))
 		{
 			if(s2mm005_flash_fw(usbpd_data,chip_swver.boot) < 0)
 			{
@@ -859,8 +822,7 @@ static int s2mm005_usbpd_probe(struct i2c_client *i2c,
 		}
 #else
 		if ((chip_swver.main[0] < fw_swver.main[0])
-			|| ((chip_swver.main[0] == fw_swver.main[0]) && (chip_swver.main[1] < fw_swver.main[1]))
-			|| (chip_swver.main[2] != fw_swver.main[2]))
+			|| ((chip_swver.main[0] == fw_swver.main[0]) && (chip_swver.main[1] < fw_swver.main[1])))
 			s2mm005_flash_fw(usbpd_data,chip_swver.boot);
 		else if ((((chip_swver.main[2] == 0xff) && (chip_swver.main[1] == 0xa5))   || chip_swver.main[2] == 0x00) &&
 			fw_swver.main[2] != 0x0)  //extra case, factory or old version (for dream)
@@ -962,7 +924,6 @@ static int s2mm005_usbpd_probe(struct i2c_client *i2c,
 	fp_select_pdo = s2mm005_select_pdo;
 
 	usbpd_data->ccic_check_at_booting = 1;
-	usbpd_data->vconn_en = 1;
 	INIT_DELAYED_WORK(&usbpd_data->ccic_init_work, ccic_state_check_work);
 	schedule_delayed_work(&usbpd_data->ccic_init_work, msecs_to_jiffies(200));
 
@@ -975,6 +936,7 @@ static int s2mm005_usbpd_probe(struct i2c_client *i2c,
 
 	s2mm005_int_clear(usbpd_data);
 	return ret;
+
 err_init_irq:
 	if (usbpd_data->irq) {
 		free_irq(usbpd_data->irq, usbpd_data);
@@ -1022,7 +984,7 @@ static int s2mm005_usbpd_remove(struct i2c_client *i2c)
 static void s2mm005_usbpd_shutdown(struct i2c_client *i2c)
 {
 	struct s2mm005_data *usbpd_data = i2c_get_clientdata(i2c);
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
+#if defined(CONFIG_CCIC_ALTERNATE_MODE)	
 	struct device_node *np;
 	int gpio_dp_sw_oe;
 #endif
@@ -1046,7 +1008,7 @@ static void s2mm005_usbpd_shutdown(struct i2c_client *i2c)
 					gpio_dp_sw_oe = of_get_named_gpio(np, "dp,aux_sw_oe", 0);
 					gpio_direction_output(gpio_dp_sw_oe, 1);
 				}
-#endif				
+#endif
 				s2mm005_manual_LPM(usbpd_data, 0xB);
 				mdelay(110);
 			}

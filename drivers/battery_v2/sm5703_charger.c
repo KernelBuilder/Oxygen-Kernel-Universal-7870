@@ -426,7 +426,7 @@ static void sm5703_set_regulation_voltage(struct sm5703_charger_data *charger,
 	mutex_unlock(&charger->io_lock);
 }
 
-#if defined(CONFIG_BATTERY_SWELLING)
+#if defined(CONFIG_BATTERY_SWELLING) || defined(CONFIG_BATTERY_SWELLING_SELF_DISCHARGING)
 static int sm5703_get_regulation_voltage(struct sm5703_charger_data *charger)
 {
 	int data = 0;
@@ -773,7 +773,7 @@ static int sec_chg_get_property(struct power_supply *psy,
 		case POWER_SUPPLY_PROP_CURRENT_FULL:
 			val->intval = sm5703_get_topoff_current(charger);
 			break;
-#if defined(CONFIG_BATTERY_SWELLING)
+#if defined(CONFIG_BATTERY_SWELLING) || defined(CONFIG_BATTERY_SWELLING_SELF_DISCHARGING)
 		case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 			val->intval = sm5703_get_regulation_voltage(charger);
 		break;
@@ -815,6 +815,10 @@ static int sec_chg_set_property(struct power_supply *psy,
 		case POWER_SUPPLY_PROP_ONLINE:
 			charger->cable_type = val->intval;
 			charger->aicl_state = false;
+			charger->input_current = charger->pdata->charging_current
+					[charger->cable_type].input_current_limit;
+			pr_info("%s:[BATT] cable_type(%d), input_current(%d)\n",
+				__func__, charger->cable_type, charger->input_current);
 #if ENABLE_AICL
 			sm5703_set_aicl_level(charger);
 #endif /*DISABLE_AICL*/
@@ -822,10 +826,10 @@ static int sec_chg_set_property(struct power_supply *psy,
 		case POWER_SUPPLY_PROP_CURRENT_MAX:
 			{
 				int input_current = val->intval;
+				if (charger->input_current < input_current) {
+					input_current = charger->input_current;
+				}
 				sm5703_set_input_current_limit(charger, input_current);
-				charger->input_current = input_current;
-				pr_info("%s:[BATT] cable_type(%d), input_current(%d)\n",
-				__func__, charger->cable_type, charger->input_current);
 			}
 			break;
 		case POWER_SUPPLY_PROP_CURRENT_AVG:
@@ -846,7 +850,7 @@ static int sec_chg_set_property(struct power_supply *psy,
 		case POWER_SUPPLY_PROP_CURRENT_FULL:
 			sm5703_set_topoff_current(charger, val->intval);
 			break;
-#if defined(CONFIG_BATTERY_SWELLING)
+#if defined(CONFIG_BATTERY_SWELLING) || defined(CONFIG_BATTERY_SWELLING_SELF_DISCHARGING)
 		case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 			pr_info("%s: float voltage(%d)\n", __func__, val->intval);
 			charger->pdata->chg_float_voltage = val->intval;

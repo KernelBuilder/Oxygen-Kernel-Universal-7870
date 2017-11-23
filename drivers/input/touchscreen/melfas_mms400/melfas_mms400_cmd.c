@@ -1211,11 +1211,7 @@ static void cmd_check_sram(void *device_data)
 
 	val = (int) info->sram_addr[0];
 
-	if(val != 0)
-		sprintf(buf, "0x%x", val);
-	else
-		sprintf(buf, "%s", "0");
-
+	sprintf(buf, "%d", val);
 	cmd_set_result(info, buf, strnlen(buf, sizeof(buf)));
 
 	info->cmd_state = CMD_STATUS_OK;

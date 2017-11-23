@@ -197,11 +197,7 @@ static int sdio_read_cccr(struct mmc_card *card, u32 ocr)
 		if (!card->sw_caps.sd3_bus_mode) {
 			if (speed & SDIO_SPEED_SHS) {
 				card->cccr.high_speed = 1;
-#ifndef CONFIG_MMC_SEC_QUIRK_CLOCK_SETTING
 				card->sw_caps.hs_max_dtr = 50000000;
-#else
-				card->sw_caps.hs_max_dtr = 51000000;
-#endif
 			} else {
 				card->cccr.high_speed = 0;
 				card->sw_caps.hs_max_dtr = 25000000;
@@ -383,11 +379,7 @@ static unsigned mmc_sdio_get_max_clock(struct mmc_card *card)
 		 * high-speed, but it seems that 50 MHz is
 		 * mandatory.
 		 */
-#ifndef CONFIG_MMC_SEC_QUIRK_CLOCK_SETTING
 		max_dtr = 50000000;
-#else
-		max_dtr = 51000000;
-#endif
 	} else {
 		max_dtr = card->cis.max_dtr;
 	}

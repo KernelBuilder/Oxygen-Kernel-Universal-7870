@@ -48,11 +48,6 @@
 static void s2mu005_muic_handle_attach(struct s2mu005_muic_data *muic_data,
 			muic_attached_dev_t new_dev, int adc, u8 vbvolt);
 static void s2mu005_muic_handle_detach(struct s2mu005_muic_data *muic_data);
-#ifndef CONFIG_SEC_FACTORY
-static void s2mu005_muic_set_water_wa(struct s2mu005_muic_data *muic_data, bool en);
-static int s2mu005_i2c_update_bit(struct i2c_client *i2c,
-			u8 reg, u8 mask, u8 shift, u8 value);
-#endif
 
 /*
 #define DEBUG_MUIC
@@ -179,27 +174,6 @@ static int s2mu005_i2c_write_byte(struct i2c_client *client,
 #endif
 	return ret;
 }
-
-#ifndef CONFIG_SEC_FACTORY
-static int s2mu005_i2c_update_bit(struct i2c_client *i2c,
-			u8 reg, u8 mask, u8 shift, u8 value)
-{
-	int ret;
-	u8 reg_val = 0;
-
-	reg_val = s2mu005_i2c_read_byte(i2c, reg);
-	reg_val &= ~mask;
-	reg_val |= value << shift;
-	ret = s2mu005_i2c_write_byte(i2c, reg, reg_val);
-	pr_info("[update_bit:%s] reg(0x%x):  value(0x%x)\n", __func__, reg, reg_val);
-	if (ret < 0) {
-		pr_err("%s: Reg = 0x%X, mask = 0x%X, val = 0x%X write err : %d\n",
-				__func__, reg, mask, value, ret);
-	}
-
-	return ret;
-}
-#endif
 
 #if defined(GPIO_DOC_SWITCH)
 static int s2mu005_set_gpio_doc_switch(int val)
@@ -665,29 +639,6 @@ static ssize_t s2mu005_muic_set_apo_factory(struct device *dev,
 
 	return count;
 }
-
-#ifndef CONFIG_SEC_FACTORY
-static void s2mu005_muic_set_water_wa(struct s2mu005_muic_data *muic_data, bool en)
-{
-	struct i2c_client *i2c = muic_data->i2c;
-
-	muic_data->is_water_wa = en;
-	pr_info("%s: en : (%d)\n", __func__, (int)en);
-	if (en) {
-		/* W/A apply */
-		s2mu005_i2c_update_bit(i2c,
-				S2MU005_REG_MUIC_LDOADC_VSETH, LDOADC_VSET_MASK, 0, LDOADC_VSET_1_2V);
-		usleep_range(WATER_TOGGLE_WA_MIN_DURATION_US, WATER_TOGGLE_WA_MAX_DURATION_US);
-		s2mu005_i2c_update_bit(i2c,
-				S2MU005_REG_MUIC_LDOADC_VSETH, LDOADC_VSET_MASK, 0, LDOADC_VSET_1_4V);
-	} else {
-		/* W/A unapply */
-		s2mu005_i2c_update_bit(i2c,
-				S2MU005_REG_MUIC_LDOADC_VSETH, LDOADC_VSET_MASK, 0, LDOADC_VSET_3V);
-	}
-	return;
-}
-#endif
 
 static DEVICE_ATTR(uart_en, 0664, s2mu005_muic_show_uart_en,
 					s2mu005_muic_set_uart_en);
@@ -1417,10 +1368,6 @@ static int s2mu005_muic_reg_init(struct s2mu005_muic_data *muic_data)
 
 	ctrl1 = s2mu005_i2c_read_byte(i2c, S2MU005_REG_MUIC_CTRL1);
 	pr_info("%s:%s: CTRL1:0x%02x\n", MUIC_DEV_NAME, __func__, ctrl1);
-#ifndef CONFIG_SEC_FACTORY
-	s2mu005_i2c_write_byte(i2c, S2MU005_REG_MUIC_LDOADC_VSETL, LDOADC_VSET_3V);
-	s2mu005_i2c_write_byte(i2c, S2MU005_REG_MUIC_LDOADC_VSETH, LDOADC_VSET_3V);
-#endif
 
 	return ret;
 }
@@ -1431,40 +1378,12 @@ static irqreturn_t s2mu005_muic_irq_thread(int irq, void *data)
 	struct i2c_client *i2c = muic_data->i2c;
 	enum s2mu005_reg_manual_sw_value reg_val;
 	int ctrl, ret = 0;
-#ifndef CONFIG_SEC_FACTORY
-	int vbvolt = 0, adc = 0;
-#endif
 
 	pr_info("%s:%s\n", MUIC_DEV_NAME, __func__);
 
 	mutex_lock(&muic_data->muic_mutex);
 	wake_lock(&muic_data->wake_lock);
-#ifndef CONFIG_SEC_FACTORY
-	vbvolt = !!(s2mu005_i2c_read_byte(i2c, S2MU005_REG_MUIC_DEVICE_APPLE) 
-				& DEV_TYPE_APPLE_VBUS_WAKEUP);
-	adc = s2mu005_i2c_read_byte(i2c, S2MU005_REG_MUIC_ADC) & ADC_MASK;
-	pr_info("%s:%s vbvolt : %d, adc: 0x%X, irq : %d\n",
-				MFD_DEV_NAME, __func__, vbvolt, adc, irq);
 
-	if (!vbvolt) {
-		if (IS_AUDIO_ADC(adc) && !muic_data->is_water_wa) {
-			if (irq == muic_data->irq_adc_change) {
-				s2mu005_muic_set_water_wa(muic_data, true);
-			}
-		} else if (IS_WATER_ADC(adc) && !muic_data->is_water_wa) {
-			if (irq == muic_data->irq_attach) {
-				s2mu005_muic_set_water_wa(muic_data, true);
-			}
-		}
-	}
-
-	if (adc == ADC_OPEN
-		&& irq ==  muic_data->irq_adc_change
-		&& muic_data->is_water_wa) {
-		usleep_range(WATER_TOGGLE_WA_MIN_DURATION_US, WATER_TOGGLE_WA_MAX_DURATION_US);
-		s2mu005_muic_set_water_wa(muic_data, false);
-	}
-#endif
 	/* check for muic reset and re-initialize registers */
 	ctrl = s2mu005_i2c_read_byte(i2c, S2MU005_REG_MUIC_CTRL1);
 
@@ -1674,9 +1593,6 @@ static int s2mu005_muic_probe(struct platform_device *pdev)
 	muic_data->is_factory_start = false;
 	muic_data->attached_dev = ATTACHED_DEV_UNKNOWN_MUIC;
 	muic_data->is_usb_ready = false;
-#ifndef CONFIG_SEC_FACTORY
-	muic_data->is_water_wa = false;
-#endif
 	platform_set_drvdata(pdev, muic_data);
 
 	if (muic_data->pdata->init_gpio_cb)

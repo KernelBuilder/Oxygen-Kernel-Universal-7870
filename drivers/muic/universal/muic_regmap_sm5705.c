@@ -56,9 +56,6 @@ enum sm5705_muic_reg_init_value {
 	REG_TIMING1_VALUE	= (ADC_DETECT_TIME_200MS |
 				KEY_PRESS_TIME_100MS),
 	REG_AFC_HYSTERESIS_OPT	= (0x20),
-#ifdef CONFIG_SM5705_DETECT_RID_WITH_VBUS
-	REG_RSVDID1_VALUE	= (0x80),
-#endif
 	REG_RSVDID2_VALUE	= (0x24),
 	REG_AFC_SSYNC_CHECK	= (0x40),
 	REG_AFC_TXD_VALUE	= (0x46),
@@ -308,11 +305,7 @@ static regmap_t sm5705_muic_regmap_table[] = {
 	[REG_CarKit]	= {"CarKitStatus",	0x00, 0x00, INIT_NONE,},
 	[REG_MANSW1]	= {"ManualSW1",	0x00, 0x00, INIT_NONE,},
 	[REG_MANSW2]	= {"ManualSW2",	0x00, 0x00, INIT_NONE,},
-#ifdef CONFIG_SM5705_DETECT_RID_WITH_VBUS
-	[REG_RSVDID1]	= {"Reserved_ID1",	0xFF, 0x00, REG_RSVDID1_VALUE,},
-#else
 	[REG_RSVDID1]	= {"Reserved_ID1",	0xFF, 0x00, INIT_NONE,},
-#endif
 	[REG_RSVDID2]	= {"Reserved_ID2",	0x24, 0x00, REG_RSVDID2_VALUE,},
 	[REG_CHGTYPE]	= {"REG_CHG_TYPE",	0xFF, 0x00, INIT_NONE,},
 	/* 0x18 ~ 0x21: AFC */

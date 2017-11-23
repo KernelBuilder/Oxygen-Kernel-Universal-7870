@@ -1072,7 +1072,7 @@ static int fts_wait_for_ready(struct fts_ts_info *info)
 		if (data[0] == EVENTID_ERROR) {
 			if (data[1] == EVENTID_ERROR_FLASH_CORRUPTION) {
 				rc = -FTS_ERROR_EVENT_ID;
-				info->boot_crc_check_fail = FTS_BOOT_CRC_FAIL;
+				info->checksum_result = 1;
 				input_err(true, &info->client->dev, "%s: flash corruption:%02X,%02X,%02X\n",
 						__func__, data[0], data[1], data[2]);
 				break;
@@ -1088,7 +1088,7 @@ static int fts_wait_for_ready(struct fts_ts_info *info)
 		if (retry++ > FTS_RETRY_COUNT) {
 			rc = -FTS_ERROR_TIMEOUT;
 			input_err(true, &info->client->dev, "%s: Time Over\n", __func__);
-			if (info->fts_power_state == FTS_POWER_STATE_LOWPOWER)
+			if (info->fts_power_state == FTS_POWER_STATE_LOWPOWER_RESUME)
 				schedule_delayed_work(&info->reset_work, msecs_to_jiffies(10));
 
 			break;
@@ -1169,22 +1169,6 @@ int fts_get_version_info(struct fts_ts_info *info)
 		info->config_version_of_ic, info->fw_main_version_of_ic);
 
 	return rc;
-}
-
-/* warmboot crc check() is default disable in FTS8. Enable after power on */
-int fts_set_warmboot_crc_enable(struct fts_ts_info *info)
-{
-	int ret;
-	unsigned char regAdd[4] = {0xB6, 0x00, 0x1E, 0x20};
-
-	
-	ret = fts_write_reg(info, &regAdd[0], 4);
-	if (ret <= 0)
-		input_err(true, &info->client->dev, "%s: failed\n", __func__);
-
-	fts_delay(10);
-
-	return ret;
 }
 
 #ifdef FTS_SUPPORT_NOISE_PARAM
@@ -1299,8 +1283,6 @@ static int fts_init(struct fts_ts_info *info)
 	int rc;
 
 	do {
-		fts_set_warmboot_crc_enable(info);
-
 		rc = fts_systemreset(info, 10);
 
 		/* below register address is  used only fts8cd56. */
@@ -1312,14 +1294,12 @@ static int fts_init(struct fts_ts_info *info)
 		if (!val[1] && !val[2]) {
 			input_info(true, &info->client->dev, "%s: corrunption:%02X%02X\n",
 				__func__, val[1], val[2]);
-			info->boot_crc_check_fail = FTS_BOOT_CRC_FAIL;
+			info->checksum_result = 1;
 		}
 		memset(regAdd, 0x00, 8);
 
 		/* about fts_systemreset() */
 		if (rc != FTS_NOT_ERROR) {
-			info->boot_crc_check_fail = FTS_BOOT_CRC_FAIL;
-			
 			fts_reset(info, 20);
 
 			if (rc == -FTS_ERROR_EVENT_ID) {
@@ -2085,23 +2065,22 @@ static unsigned char fts_event_handler_type_b(struct fts_ts_info *info,
 		else if (EventID == EVENTID_LEAVE_POINTER) {
 #if !defined(CONFIG_SAMSUNG_PRODUCT_SHIP)
 			input_info(true, &info->client->dev,
-				"%s[R] tID:%d mc:%d tc:%d lx:%d ly:%d Ver[%02X%04X|%01X] P%02XT%04X[%02X] F%02X%02X C%02X\n",
+				"%s[R] tID:%d mc:%d tc:%d lx:%d ly:%d Ver[%02X%04X|%01X] P%02XT%04X[%02X]\n",
 				info->dex_name,
 				TouchID, info->finger[TouchID].mcount, info->touch_count,
 				info->finger[TouchID].lx, info->finger[TouchID].ly,
 				info->panel_revision, info->fw_main_version_of_ic,
 				info->flip_enable, info->cal_count, info->tune_fix_ver,
-				info->test_result.data[0], info->pressure_cal_base,
-				info->pressure_cal_delta, info->nv_crc_fail_count);
+				info->test_result.data[0]);
 #else
 			input_info(true, &info->client->dev,
-				"%s[R] tID:%d mc:%d tc:%d Ver[%02X%04X|%01X] P%02XT%04X[%02X] F%02X%02X, C%02X\n",
+				"%s[R] tID:%d mc:%d tc:%d Ver[%02X%04X|%01X] P%02XT%04X[%02X] F%02X%02X\n",
 				info->dex_name,
 				TouchID, info->finger[TouchID].mcount, info->touch_count,
 				info->panel_revision, info->fw_main_version_of_ic,
 				info->flip_enable, info->cal_count, info->tune_fix_ver,
-				info->test_result.data[0], info->pressure_cal_base,
-				info->pressure_cal_delta, info->nv_crc_fail_count);
+				info->test_result.data[0],
+				info->pressure_cal_base, info->pressure_cal_delta);
 #endif
 			info->finger[TouchID].mcount = 0;
 		}
@@ -2178,7 +2157,7 @@ static irqreturn_t fts_interrupt_handler(int irq, void *handle)
 #endif
 
 	/* in LPM, waiting blsp block resume */
-	if (info->fts_power_state == FTS_POWER_STATE_LOWPOWER) {
+	if (info->fts_power_state == FTS_POWER_STATE_LOWPOWER_SUSPEND) {
 		int ret;
 
 		input_dbg(true, &info->client->dev, "%s: run LPM interrupt handler\n", __func__);
@@ -2828,7 +2807,6 @@ static int fts_probe(struct i2c_client *client, const struct i2c_device_id *idp)
 
 	wake_lock_init(&info->wakelock, WAKE_LOCK_SUSPEND, "tsp_wakelock");
 	init_completion(&info->resume_done);
-	complete_all(&info->resume_done);
 
 	if (info->board->support_dex) {
 		info->input_dev_pad->name = "sec_touchpad";
@@ -3188,8 +3166,7 @@ static void fts_input_close(struct input_dev *dev)
 	cancel_delayed_work(&info->reset_work);
 
 #ifndef CONFIG_SEC_FACTORY
-	if (info->board->use_pressure)
-		info->lowpower_flag |= FTS_MODE_PRESSURE;
+	info->lowpower_flag |= FTS_MODE_PRESSURE;
 #endif
 	fts_stop_device(info, info->lowpower_flag);
 
@@ -3238,11 +3215,33 @@ static void fts_reinit_fac(struct fts_ts_info *info)
 }
 #endif
 
-void fts_reinit(struct fts_ts_info *info)
+static void fts_reinit(struct fts_ts_info *info)
 {
-	fts_systemreset(info, 10);
+	unsigned char retry = 3;
+	int rc = 0;
+	unsigned char regAdd[4] = { 0xB6, 0x00, 0x28, 0x80 };
 
-	fts_read_chip_id(info);
+	if (info->fts_power_state == FTS_POWER_STATE_POWERDOWN) {
+		fts_wait_for_ready(info);
+		fts_read_chip_id(info);
+	}
+
+	do {
+		fts_write_reg(info, &regAdd[0], 4); /* system reset */
+		fts_delay(10);
+
+		rc = fts_wait_for_ready(info);
+		if (rc != FTS_NOT_ERROR) {
+			fts_reset(info, 20);
+		} else {
+			break;
+		}
+	} while (retry--);
+
+	if (retry == 0) {
+		input_err(true, &info->client->dev, "%s: Failed to system reset\n", __func__);
+		return;
+	}
 
 #ifdef FTS_SUPPORT_NOISE_PARAM
 	fts_set_noise_param(info);
@@ -3484,16 +3483,7 @@ static void fts_read_info_work(struct work_struct *work)
 
 	fts_get_calibration_information(info);
 
-	fts_get_factory_debug_information(info);
-	if (info->boot_crc_check_fail == FTS_BOOT_CRC_FAIL) {
-
-		info->nv_crc_fail_count++;
-		if (info->nv_crc_fail_count > 0xFE)
-			info->nv_crc_fail_count = 0xFE;
-
-		fts_set_factory_debug_information(info, info->pressure_cal_base,
-				info->pressure_cal_delta, info->nv_crc_fail_count);
-	}
+	fts_get_pressure_calibration_information(info);
 
 	ret = fts_get_tsp_test_result(info);
 	if (ret < 0)
@@ -3591,7 +3581,7 @@ static int fts_stop_device(struct fts_ts_info *info, bool lpmode)
 		fts_enable_feature(info, FTS_FEATURE_LPM_FUNCTION, true);
 		fts_command(info, FTS_CMD_LOWPOWER_MODE);
 
-		info->fts_power_state = FTS_POWER_STATE_LOWPOWER;
+		info->fts_power_state = FTS_POWER_STATE_LOWPOWER_RESUME;
 
 #ifdef FTS_SUPPORT_STRINGLIB
 #ifndef CONFIG_SEC_FACTORY
@@ -3655,8 +3645,6 @@ static int fts_start_device(struct fts_ts_info *info)
 		if (info->board->power)
 			info->board->power(info, true);
 		info->touch_stopped = false;
-
-		fts_set_warmboot_crc_enable(info);
 
 		info->reinit_done = false;
 		fts_reinit(info);
@@ -3730,8 +3718,10 @@ static int fts_pm_suspend(struct device *dev)
 
 	input_dbg(true, &info->client->dev, "%s\n", __func__);
 
-	if (info->fts_power_state > FTS_POWER_STATE_POWERDOWN)
+	if (info->fts_power_state > FTS_POWER_STATE_POWERDOWN) {
+		info->fts_power_state = FTS_POWER_STATE_LOWPOWER_SUSPEND;
 		reinit_completion(&info->resume_done);
+	}
 
 	return 0;
 }
@@ -3742,9 +3732,10 @@ static int fts_pm_resume(struct device *dev)
 
 	input_dbg(true, &info->client->dev, "%s\n", __func__);
 
-	if (info->fts_power_state > FTS_POWER_STATE_POWERDOWN)
+	if (info->fts_power_state > FTS_POWER_STATE_POWERDOWN) {
+		info->fts_power_state = FTS_POWER_STATE_LOWPOWER_RESUME;
 		complete_all(&info->resume_done);
-
+	}
 	return 0;
 }
 #endif

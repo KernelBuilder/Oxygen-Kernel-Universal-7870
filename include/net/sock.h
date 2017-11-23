@@ -435,13 +435,8 @@ struct sock {
 	__u32			sk_mark;
 	u32			sk_classid;
 	struct cg_proto		*sk_cgrp;
-	/* START_OF_KNOX_VPN */
-	uid_t           knox_uid;
-	pid_t           knox_pid;
-	__be32          inet_src_masq;
-	char domain_name[255];
-	__u64   open_time;
-	/* END_OF_KNOX_VPN */
+	uid_t			knox_uid;
+	pid_t			knox_pid;
 	void			(*sk_state_change)(struct sock *sk);
 	void			(*sk_data_ready)(struct sock *sk);
 	void			(*sk_write_space)(struct sock *sk);

@@ -900,12 +900,10 @@ static int csi_s_power(struct v4l2_subdev *subdev,
 		return -EINVAL;
 	}
 
-	if (on) {
-		phy_set(csi->phy, 1, NULL);
+	if (on)
 		ret = phy_power_on(csi->phy);
-	} else {
+	else
 		ret = phy_power_off(csi->phy);
-	}
 
 	if (ret) {
 		err("fail to csi%d power on/off(%d)", csi->instance, on);

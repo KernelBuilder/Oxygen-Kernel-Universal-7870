@@ -196,9 +196,6 @@ struct mip4_tk_info {
 	int key_code[MAX_KEY_NUM];
 	bool key_code_loaded;
 
-	bool irq_checked;
-	int irq_key_count[MAX_KEY_NUM];
-
 #ifdef CONFIG_TOUCHKEY_GRIP
 	struct wake_lock touchkey_wake_lock;
 	u16 grip_p_thd;

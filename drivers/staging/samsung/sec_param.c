@@ -60,7 +60,8 @@ static void sec_param_update(struct work_struct *work)
 		pr_err("%s: write error! %d\n", __func__, ret);
 
 close_fp_out:
-	filp_close(fp, NULL);
+	if (fp)
+		filp_close(fp, NULL);
 	pr_info("%s: exit %d\n", __func__, ret);
 }
 
@@ -89,7 +90,8 @@ static void sec_param_update_str(struct work_struct *work)
 		pr_err("%s: write error! %d\n", __func__, ret);
 
 close_fp_out:
-	filp_close(fp, NULL);
+	if (fp)
+		filp_close(fp, NULL);
 	pr_info("%s: exit %d\n", __func__, ret);
 }
 

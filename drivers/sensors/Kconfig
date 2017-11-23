@@ -151,13 +151,6 @@ config SENSORS_TMD3725
 	help
 	   This option enables proximity & light sensors using TMD3725 driver.
 
-config SENSORS_TMD3725_RF_NOISE_DEFENCE_CODE
-	depends on SENSORS_TMD3725
-	tristate "TMD3725 driver defence code feature"
-	default n
-	help
-	   This option enables proximity using defence code in TMD3725 driver.
-
 config SENSORS_STK3013
 	depends on I2C
 	tristate "STK3013 driver"

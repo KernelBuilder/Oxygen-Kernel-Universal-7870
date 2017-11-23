@@ -17,11 +17,7 @@
 #include <linux/input.h>
 #endif
 #include <linux/sec_ext.h>
-#if defined(CONFIG_BATTERY_SAMSUNG_V2)
-#include "../../battery_v2/include/sec_battery.h"
-#else
 #include <linux/battery/sec_battery.h>
-#endif
 #include <linux/sec_batt.h>
 
 #include <asm/cacheflush.h>
@@ -72,7 +68,6 @@ static void sec_power_off(void)
 	struct power_supply *usb_psy = power_supply_get_by_name("usb");
 	struct power_supply *wc_psy = power_supply_get_by_name("wireless");
 	union power_supply_propval ac_val;
-	union power_supply_propval water_val;
 	union power_supply_propval usb_val;
 	union power_supply_propval wc_val;
 
@@ -109,22 +104,17 @@ static void sec_power_off(void)
 	ac_psy->get_property(ac_psy, POWER_SUPPLY_PROP_ONLINE, &ac_val);
 	usb_psy->get_property(usb_psy, POWER_SUPPLY_PROP_ONLINE, &usb_val);
 	wc_psy->get_property(wc_psy, POWER_SUPPLY_PROP_ONLINE, &wc_val);
-#if defined(CONFIG_BATTERY_SAMSUNG_V2)
-	ac_psy->get_property(ac_psy, POWER_SUPPLY_EXT_PROP_WATER_DETECT, &water_val);
-#else
-	water_val.intval = 0;
-#endif
 
-	pr_info("[%s] AC[%d] : USB[%d] : WC[%d] : WATER[%d]\n", __func__,
-		ac_val.intval, usb_val.intval, wc_val.intval, water_val.intval);
+	pr_info("[%s] AC[%d] : USB[%d] : WC[%d]\n", __func__,
+		ac_val.intval, usb_val.intval, wc_val.intval);
 
 	while (1) {
 		/* Check reboot charging */
 #ifdef CONFIG_SAMSUNG_BATTERY
-		if ((ac_val.intval || water_val.intval || usb_val.intval || wc_val.intval ||
+		if ((ac_val.intval || usb_val.intval || wc_val.intval ||
 		     (poweroff_try >= 5)) && !lpcharge) {
 #else
-		if ((ac_val.intval || water_val.intval || usb_val.intval || wc_val.intval ||
+		if ((ac_val.intval || usb_val.intval || wc_val.intval ||
 		     (poweroff_try >= 5))) {
 #endif
 			pr_emerg("%s: charger connected or power off "

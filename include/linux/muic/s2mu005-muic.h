@@ -168,27 +168,6 @@ enum s2mu005_reg_manual_sw_value {
 	MANSW_UART		=	(MANUAL_SW_UART),
 };
 
-#ifndef CONFIG_SEC_FACTORY
-/* S2MU005_REG_LDOADC_VSET register */
-#define LDOADC_VSET_MASK        0x1F
-#define LDOADC_VSET_3V          0x1F
-#define LDOADC_VSET_2_6V        0x0E
-#define LDOADC_VSET_2_0V        0x08
-#define LDOADC_VSET_2_2V        0x0A
-#define LDOADC_VSET_2_4V        0x0C
-#define LDOADC_VSET_1_5V        0x03
-#define LDOADC_VSET_1_4V        0x02
-#define LDOADC_VSET_1_2V        0x00
-
-/* Range of ADC */
-#define IS_WATER_ADC(adc)( ((adc) > (ADC_GND)) && ((adc) < (ADC_OPEN)) ? 1 : 0 )
-#define IS_AUDIO_ADC(adc)( ((adc) >= (ADC_SEND_END)) && ((adc) <= (ADC_REMOTE_S12)) ? 1 : 0 )
-
-#define WATER_TOGGLE_WA_MIN_DURATION_US	20000
-#define WATER_TOGGLE_WA_MAX_DURATION_US	21000
-
-#endif
-
 /* muic chip specific internal data structure
  * that setted at muic-xxxx.c file
  */
@@ -231,9 +210,7 @@ struct s2mu005_muic_data {
 	bool	is_factory_start;
 	bool	is_rustproof;
 	bool	is_otg_test;
-#ifndef CONFIG_SEC_FACTORY
-	bool	is_water_wa;
-#endif
+
 	/* W/A waiting for the charger ic */
 	bool suspended;
 	bool need_to_noti;

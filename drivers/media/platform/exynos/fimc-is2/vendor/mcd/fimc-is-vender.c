@@ -54,10 +54,6 @@ struct workqueue_struct *sensor_pwr_ctrl_wq = 0;
 #define CAMERA_WORKQUEUE_MAX_WAITING	1000
 #endif
 
-#ifdef CONFIG_SECURE_CAMERA_USE
-static u32 secure_sensor_id;
-#endif
-
 #ifdef USE_CAMERA_HW_BIG_DATA
 static struct cam_hw_param_collector cam_hwparam_collector;
 static bool mipi_err_check;
@@ -275,9 +271,6 @@ int fimc_is_vender_probe(struct fimc_is_vender *vender)
 	specific->eeprom_client1 = NULL;
 	specific->suspend_resume_disable = false;
 	specific->need_cold_reset = false;
-#ifdef CONFIG_SECURE_CAMERA_USE
-	specific->secure_sensor_id = secure_sensor_id;
-#endif
 
 	vender->private_data = specific;
 
@@ -332,14 +325,6 @@ int fimc_is_vender_dt(struct device_node *np)
 	if (ret) {
 		probe_err("front_sensor_id read is fail(%d)", ret);
 	}
-
-#ifdef CONFIG_SECURE_CAMERA_USE
-	ret = of_property_read_u32(np, "secure_sensor_id", &secure_sensor_id);
-	if (ret) {
-		probe_err("secure_sensor_id read is fail(%d)", ret);
-		secure_sensor_id = 0;
-	}
-#endif
 
 	check_sensor_vendor = of_property_read_bool(np, "check_sensor_vendor");
 	if (!check_sensor_vendor) {

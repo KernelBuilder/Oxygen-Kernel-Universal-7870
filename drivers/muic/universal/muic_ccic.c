@@ -222,24 +222,18 @@ int mdev_noti_detached(int mdev)
 static void mdev_handle_ccic_detach(muic_data_t *pmuic)
 {
 	struct mdev_desc_t *pdesc = &mdev_desc;
-#ifndef CONFIG_MUIC_UNIVERSAL_SM5705
-	struct vendor_ops *pvendor = pmuic->regmapdesc->vendorops;
-#endif
+	/* FIXME */
+//	struct vendor_ops *pvendor = pmuic->regmapdesc->vendorops;
+
 #if defined(CONFIG_MUIC_HV_MAX77854) || defined(CONFIG_MUIC_HV_MAX77865)
 	hv_do_detach(pmuic->phv);
 #endif
-#ifdef CONFIG_MUIC_USB_ID_CTR
-	gpio_direction_output(pmuic->usb_id_ctr, 0);
-#endif
 
-	if (pdesc->ccic_evt_rprd) {
-#ifndef CONFIG_MUIC_UNIVERSAL_SM5705
-		if (pvendor && pvendor->enable_chgdet)
-			pvendor->enable_chgdet(pmuic->regmapdesc, 1);
-#else
-		set_switch_mode(pmuic,SWMODE_AUTO);
-#endif
-	}
+	/* FIXME */
+//	if (pdesc->ccic_evt_rprd) {
+//		if (pvendor && pvendor->enable_chgdet)
+//			pvendor->enable_chgdet(pmuic->regmapdesc, 1);
+//	}
 
 	mdev_com_to(pmuic, MUIC_PATH_OPEN);
 	if (mdev_is_supported(pdesc->mdev))
@@ -263,7 +257,8 @@ static void mdev_handle_ccic_detach(muic_data_t *pmuic)
 #if defined(CONFIG_MUIC_TEST_FUNC)
 	pmuic->usb_to_ta_state = false;
 #endif
-	pmuic->is_dcdtmr_intr = false;
+	/* FIXME */
+//	pmuic->is_dcdtmr_intr = false;
 
 	return;
 }
@@ -273,21 +268,34 @@ static int mdev_handle_factory_jig(muic_data_t *pmuic, int rid, int vbus);
 int mdev_continue_for_TA_USB(muic_data_t *pmuic, int mdev)
 {
 	struct mdev_desc_t *pdesc = &mdev_desc;
+	/* FIXME */
+//	struct vendor_ops *pvendor = pmuic->regmapdesc->vendorops;
 	int i;
 	int vbus = mdev_get_vbus(pmuic);
 
+	/* FIXME */
 	/* For Incomplete insertion case */
-	if (pdesc->ccic_evt_attached == MUIC_CCIC_NOTI_ATTACH &&
-				pmuic->is_dcdtmr_intr == true &&
-				vbus && pmuic->is_rescanned == false) {
-		pr_info("%s: Incomplete insertion. Do chgdet again\n", __func__);
-		BCD_rescan_incomplete_insertion(pmuic, pmuic->is_rescanned);
-		pmuic->is_rescanned = true;
-	}
-	if (vbus == 0) {
-		pmuic->is_dcdtmr_intr = false;
-		pmuic->is_rescanned = false;
-	}
+//	if (pdesc->ccic_evt_attached == MUIC_CCIC_NOTI_ATTACH &&
+//			pmuic->is_dcdtmr_intr && vbus && pdesc->ccic_evt_dcdcnt < 1) {
+//		pmuic->is_dcdtmr_intr = false;
+		/* W/A for DEX detected late case */
+//		if (pdesc->ccic_evt_rprd) {
+//			pr_info("%s: Dex connected. Set path and dev type to USB\n", __func__);
+//			pdesc->mdev = ATTACHED_DEV_USB_MUIC;
+//			mdev_com_to(pmuic, MUIC_PATH_USB_AP);
+//			mdev_noti_attached(pdesc->mdev);
+//		} else {
+//			pr_info("%s: Incomplete insertion. Do chgdet again\n", __func__);
+//			pdesc->ccic_evt_dcdcnt++;
+//			if (pvendor && pvendor->run_chgdet)
+//				pvendor->run_chgdet(pmuic->regmapdesc, 1);
+//		}
+//		return 0;
+//	}
+//	if (vbus == 0) {
+//		pdesc->ccic_evt_dcdcnt = 0;
+//		pmuic->is_dcdtmr_intr = false;
+//	}
 
 	if (!muic_is_ccic_supported_dev(pmuic, mdev)) {
 		pr_info("%s:%s: NOT supported(%d).\n", __func__, MUIC_DEV_NAME, mdev);
@@ -312,7 +320,7 @@ int mdev_continue_for_TA_USB(muic_data_t *pmuic, int mdev)
 	for (i = 0; i < 4; i++) {
 		pr_info("%s:%s: Checking RID (%dth)....\n",
 				MUIC_DEV_NAME,__func__, i + 1);
-
+		
 		/* Do not continue if this is an RID */
 		if (pdesc->ccic_evt_rid || pdesc->ccic_evt_rprd) {
 			pr_info("%s:%s: Not a TA or USB -> discarded.\n",
@@ -465,7 +473,9 @@ static int muic_handle_ccic_ATTACH(muic_data_t *pmuic, CC_NOTI_ATTACH_TYPEDEF *p
 {
 	struct mdev_desc_t *pdesc = &mdev_desc;
 	int vbus = mdev_get_vbus(pmuic);
-	int prev_status = pdesc->ccic_evt_attached;
+	/* FIXME */
+//	struct vendor_ops *pvendor = pmuic->regmapdesc->vendorops;
+//	int prev_status = pdesc->ccic_evt_attached;
 
 	pr_info("%s: src:%d dest:%d id:%d attach:%d cable_type:%d rprd:%d\n", __func__,
 		pnoti->src, pnoti->dest, pnoti->id, pnoti->attach, pnoti->cable_type, pnoti->rprd);
@@ -490,12 +500,9 @@ static int muic_handle_ccic_ATTACH(muic_data_t *pmuic, CC_NOTI_ATTACH_TYPEDEF *p
 		if (pnoti->rprd) {
 			pr_info("%s: RPRD\n", __func__);
 			pdesc->ccic_evt_rprd = 1;
-#ifndef CONFIG_MUIC_UNIVERSAL_SM5705
-			if (pvendor && pvendor->enable_chgdet)
-				pvendor->enable_chgdet(pmuic->regmapdesc, 0);
-#else
-			set_switch_mode(pmuic,SWMODE_MANUAL);
-#endif
+			/* FIXME */
+//			if (pvendor && pvendor->enable_chgdet)
+//				pvendor->enable_chgdet(pmuic->regmapdesc, 0);
 			pdesc->mdev = ATTACHED_DEV_OTG_MUIC;
 			mdev_com_to(pmuic, MUIC_PATH_USB_AP);
 			mdev_noti_attached(pdesc->mdev);
@@ -513,14 +520,20 @@ static int muic_handle_ccic_ATTACH(muic_data_t *pmuic, CC_NOTI_ATTACH_TYPEDEF *p
 			pmuic->afc_water_disable = false;
 		}
 
+		/* FIXME */
 		/* W/A for Incomplete insertion case */
-		if (prev_status != MUIC_CCIC_NOTI_ATTACH &&
-				pmuic->is_dcdtmr_intr== true && vbus &&
-				pmuic->is_rescanned == false) {
-			pr_info("%s: Incomplete insertion. Do chgdet again\n", __func__);
-			BCD_rescan_incomplete_insertion(pmuic, pmuic->is_rescanned);
-			pmuic->is_rescanned = true;
-		}
+//		pdesc->ccic_evt_dcdcnt = 0;
+//		if (prev_status != MUIC_CCIC_NOTI_ATTACH &&
+//				pmuic->is_dcdtmr_intr && vbus) {
+//			if (pmuic->vps.t.chgdetrun) {
+//				pr_info("%s: Incomplete insertion. Chgdet runnung\n", __func__);
+//				return 0;
+//			}
+//			pr_info("%s: Incomplete insertion. Do chgdet again\n", __func__);
+//			pmuic->is_dcdtmr_intr = false;
+//			if (pvendor && pvendor->run_chgdet)
+//				pvendor->run_chgdet(pmuic->regmapdesc, 1);
+//		}
 
 	} else {
 		if (pnoti->rprd) {
@@ -552,14 +565,6 @@ static int mdev_handle_factory_jig(muic_data_t *pmuic, int rid, int vbus)
 		break;
 	case RID_523K:
 	case RID_619K:
-/* 
- * control USB_ID_CTR to get uart logs
- * set USB_ID_CTR = 1, then MUIC adc value is 150k
- * sm5705 muic need vbus or adc value for changing uart path
- */
-#ifdef CONFIG_MUIC_USB_ID_CTR
-		gpio_direction_output(pmuic->usb_id_ctr, 1);
-#endif
 		mdev_com_to(pmuic, MUIC_PATH_UART_AP);
 		break;
 	default:

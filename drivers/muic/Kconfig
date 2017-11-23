@@ -299,20 +299,6 @@ config MUIC_USB_ID_CTR
 	help
 	  If you say yes here you will get support for the SM5705 MUIC chip.
 
-config SM5705_DETECT_RID_WITH_VBUS
-	bool "Set reserved id 1 register to recognize adc value with vbus in SM5705"
-	depends on MUIC_UNIVERSAL_SM5705
-	default n
-	help
-	  If you say yes here you will get support for the SM5705 MUIC chip.
-
-config MUIC_POGO
-	bool "Using POGO"
-	depends on USE_MUIC
-	default n
-	help
-	  If you say yes here you will get support for POGO.
-
 config MUIC_UNIVERSAL_SM5504
 	bool "SM5504 MUIC"
 	depends on USE_MUIC

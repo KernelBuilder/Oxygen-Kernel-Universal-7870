@@ -109,7 +109,7 @@ enum {
 	SM5705_INT_STATUS4_SBPS,
 };
 
-#if defined(SM5705_USED_WIRELESS_CHARGER) || defined(CONFIG_USE_POGO)
+#if defined(SM5705_USED_WIRELESS_CHARGER)
 #define __n_is_cable_type_for_wireless(cable_type) \
 					((cable_type != POWER_SUPPLY_TYPE_WIRELESS) && \
 					(cable_type != POWER_SUPPLY_TYPE_HV_WIRELESS) && \
@@ -136,7 +136,6 @@ enum {
 
 static struct device_attribute sm5705_charger_attrs[] = {
 	SM5705_CHARGER_ATTR(chip_id),
-	SM5705_CHARGER_ATTR(charger_op_mode),
 };
 
 /**
@@ -212,22 +211,6 @@ static int sm5705_CHG_enable_AUTOSTOP(struct sm5705_charger_data *charger,
 
 	return 0;
 }
-
-#if defined(CONFIG_USE_POGO)
-static int sm5705_CHG_set_external_boost(struct sm5705_charger_data *charger,
-				bool enable)
-{
-	int ret;
-
-	ret = sm5705_update_reg(charger->i2c, SM5705_REG_CHGCNTL7, (enable << 4), (1 << 4));
-	if (ret < 0) {
-		pr_err("fail to update REG:SM5705_REG_CHGCNTL7 in ENUSBLOD2[4]\n");
-		return ret;
-	}
-
-	return 0;
-}
-#endif
 
 static unsigned char _calc_BATREG_offset_to_float_mV(unsigned short mV)
 {
@@ -586,6 +569,45 @@ static void sm5705_chg_test_read(struct sm5705_charger_data *charger)
  *  SM5705 Charger Driver support functions
  */
 
+#if defined(CONFIG_BATTERY_SWELLING_SELF_DISCHARGING)
+static bool sm5705_charger_get_discharging_force_status(struct sm5705_charger_data *charger)
+{
+	unsigned char reg;
+	if (sm5705_call_fg_device_id() <= 2) {
+		pr_info("unsupported this function under rev02.\n");
+		return false;
+	}
+	reg = sm5705_CHG_read_reg(charger, SM5705_REG_FACTORY);
+	pr_info("enable:(%s), reg[0x%02X]:0x%02x\n",
+		(reg & SM5705_EN_DISCHG_FORCE_MASK) ? "ON" : "OFF" , SM5705_REG_FACTORY, reg);
+
+	if (reg & SM5705_EN_DISCHG_FORCE_MASK)
+		return true;
+	else
+		return false;
+}
+
+static void sm5705_charger_en_discharing_force(struct sm5705_charger_data *charger, bool enable)
+{
+	unsigned char reg;
+	if (sm5705_call_fg_device_id() <= 2) {
+		pr_info("unsupported this function under rev02.\n");
+		return;
+	}
+
+	if (enable)
+		sm5705_update_reg(charger->i2c, SM5705_REG_FACTORY,
+			SM5705_EN_DISCHG_FORCE_MASK, SM5705_EN_DISCHG_FORCE_MASK);
+	else
+		sm5705_update_reg(charger->i2c, SM5705_REG_FACTORY,
+			0, SM5705_EN_DISCHG_FORCE_MASK);
+
+	reg = sm5705_CHG_read_reg(charger, SM5705_REG_FACTORY);
+	pr_info("enable(%s), reg[0x%02X]:0x%02x\n",
+		enable ? "ON" : "OFF", SM5705_REG_FACTORY, reg);
+}
+#endif
+
 static bool sm5705_charger_check_oper_otg_mode_on(void)
 {
 	unsigned char current_status = sm5705_charger_oper_get_current_status();
@@ -821,11 +843,13 @@ static int sm5705_chg_set_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		pr_info("POWER_SUPPLY_PROP_CURRENT_MAX - current=%d\n", val->intval);
-		if (charger->input_current != val->intval) {
-			pr_info("change input current (%d --> %d)\n", charger->input_current, val->intval);
-			charger->input_current = val->intval;
-		}
+		{
+			int input_current = val->intval;
+			if (charger->input_current < input_current) {
+				input_current = charger->input_current;
+			}
 		sm5705_set_input_current(charger, val->intval);
+		}		
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
@@ -838,17 +862,6 @@ static int sm5705_chg_set_property(struct power_supply *psy,
 			sm5705_set_charge_current(charger, charger->charging_current);
 		}
 			break;
-	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
-#if defined(CONFIG_USE_POGO)
-		/* external boost control */
-		pr_info("[SM5705Q] external boost (%d)\n", val->intval);
-		sm5705_CHG_set_external_boost(charger, val->intval);
-#endif
-		break;
-	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		pr_info("POWER_SUPPLY_PROP_VOLTAGE_MAX - float voltage=%d\n", val->intval);
-		sm5705_CHG_set_BATREG(charger, val->intval);
-		break;
 	case POWER_SUPPLY_PROP_CURRENT_FULL:
 		if (charger->pdata->full_check_type_2nd == SEC_BATTERY_FULLCHARGED_CHGPSY) {
 			sm5705_CHG_set_TOPOFF(charger, val->intval);
@@ -857,6 +870,12 @@ static int sm5705_chg_set_property(struct power_supply *psy,
 #if defined(CONFIG_AFC_CHARGER_MODE)
 	case POWER_SUPPLY_PROP_AFC_CHARGER_MODE:
 		psy_chg_set_afc_charger_mode(charger, val->intval);
+		break;
+#endif
+#if defined(CONFIG_BATTERY_SWELLING) || defined(CONFIG_BATTERY_SWELLING_SELF_DISCHARGING)
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+		charger->pdata->chg_float_voltage = val->intval;
+		sm5705_CHG_set_BATREG(charger, val->intval);
 		break;
 #endif
 	case POWER_SUPPLY_PROP_USB_HC:
@@ -888,13 +907,6 @@ static int sm5705_chg_set_property(struct power_supply *psy,
 			break;
 		}
 		sm5705_enable_charging_on_switch(charger, charger->is_charging);
-		if (buck_state) {
-			sm5705_update_reg(charger->i2c, SM5705_REG_CNTL, SM5705_CHARGER_OP_MODE_CHG_ON, 0x07);
-			pr_info("update op_mode : SM5705_CHARGER_OP_MODE_CHG_ON\n");
-		} else {
-			sm5705_update_reg(charger->i2c, SM5705_REG_CNTL, SM5705_CHARGER_OP_MODE_SUSPEND, 0x07);
-			pr_info("update op_mode : SM5705_CHARGER_OP_MODE_SUSPEND\n");
-		}
 		break;
 	case POWER_SUPPLY_PROP_ENERGY_NOW:
 		/* WA: abnormal swiching case in JIG cable */
@@ -912,11 +924,13 @@ static int sm5705_chg_set_property(struct power_supply *psy,
 		if (val->intval)
 			sm5705_enable_charging_on_switch(charger, false);
 		break;
+#if defined(CONFIG_BATTERY_SWELLING_SELF_DISCHARGING)
+	case POWER_SUPPLY_PROP_RESISTANCE:
+		sm5705_charger_en_discharing_force(charger, val->intval);
+		break;
+#endif
 	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT_MAX:
 		break;
-        case POWER_SUPPLY_PROP_PRESENT:
-                charger->is_jig_on = true;
-                break;
 	default:
 		pr_err("un-known Power-supply property type (psp=%d)\n", psp);
 		return -EINVAL;
@@ -991,24 +1005,13 @@ static int psy_chg_get_charging_health(struct sm5705_charger_data *charger)
 {
 	int state;
 	unsigned char reg_data;
-	unsigned char reg2_data;
 
 	sm5705_read_reg(charger->i2c, SM5705_REG_STATUS1, &reg_data);
-	sm5705_read_reg(charger->i2c, SM5705_REG_STATUS2, &reg2_data);
 
-	pr_info("is_charging=%d(%d), cable_type=%d, input_limit=%d, chg_curr=%d, REG_STATUS1=0x%x, REG_STATUS2=0x%x\n",
-			charger->is_charging, sm5705_charger_get_power_source_status(charger),
-			charger->cable_type, charger->input_current, charger->charging_current,
-			reg_data, reg2_data);
-
-#if defined(CONFIG_USE_POGO)
-	if ((charger->cable_type == POWER_SUPPLY_TYPE_BATTERY) &&
-			(reg_data & SM5705_STATUS1_WPCINPOK)) {
-		wake_lock(&charger->wpc_wake_lock);
-		cancel_delayed_work(&charger->pogo_work);
-		queue_delayed_work(charger->wqueue, &charger->pogo_work, 0);
-	}
-#endif
+	pr_info("is_charging=%d(%d), cable_type=%d, input_limit=%d, chg_curr=%d, REG_STATUS1=0x%x\n",
+		charger->is_charging, sm5705_charger_get_power_source_status(charger),
+		charger->cable_type, charger->input_current, charger->charging_current,
+		reg_data);
 
 	if (charger->cable_type != POWER_SUPPLY_TYPE_WIRELESS) {
 		if (reg_data & (1 << SM5705_INT_STATUS1_VBUSPOK)) {
@@ -1056,19 +1059,11 @@ create_attrs_failed:
 ssize_t sm5705_chg_show_attrs(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	const ptrdiff_t offset = attr - sm5705_charger_attrs;
-	struct power_supply *psy = dev_get_drvdata(dev);
-	struct sm5705_charger_data *charger =
-		container_of(psy, struct sm5705_charger_data, psy_chg);
 	int i = 0;
-	unsigned char reg_data;
 
 	switch (offset){
 	case CHIP_ID:
 		i += scnprintf(buf + i, PAGE_SIZE - i, "%s\n", "SM5705");
-		break;
-	case CHARGER_OP_MODE:
-		sm5705_read_reg(charger->i2c, SM5705_REG_CNTL, &reg_data);
-		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",reg_data);
 		break;
 	default:
 		return -EINVAL;
@@ -1080,27 +1075,10 @@ ssize_t sm5705_chg_store_attrs(struct device *dev, struct device_attribute *attr
 {
 	const ptrdiff_t offset = attr - sm5705_charger_attrs;
 	int ret = 0;
-	int x = 0;
-	struct power_supply *psy = dev_get_drvdata(dev);
-	struct sm5705_charger_data *charger =
-		container_of(psy, struct sm5705_charger_data, psy_chg);
 
 	switch(offset){
 	case CHIP_ID:
 		ret = count;
-		break;
-	case CHARGER_OP_MODE:
-		if (sscanf(buf, "%10d\n", &x) == 1) {
-			if (x == 2) {
-				sm5705_update_reg(charger->i2c, SM5705_REG_CNTL, SM5705_CHARGER_OP_MODE_SUSPEND, 0x07);
-			}else if(x == 1){
-				sm5705_update_reg(charger->i2c, SM5705_REG_CNTL, SM5705_CHARGER_OP_MODE_CHG_ON, 0x07);
-			}else {
-				pr_info("change charger op mode fail\n");
-				return -EINVAL;
-			}
-			ret = count;
-		}
 		break;
 	default:
 		ret = -EINVAL;
@@ -1119,10 +1097,8 @@ static int sm5705_chg_get_property(struct power_supply *psy,
 		val->intval = psy_chg_get_charge_source_type(charger);
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
-		if (sm5705_CHG_get_INT_STATUS(charger, SM5705_INT_STATUS2, SM5705_INT_STATUS2_NOBAT))
-			val->intval = 0;
-		else
-			val->intval = 1;
+		val->intval = sm5705_CHG_get_INT_STATUS(charger,
+						SM5705_INT_STATUS2, SM5705_INT_STATUS2_NOBAT);
 		break;
 	case POWER_SUPPLY_PROP_STATUS:
 		val->intval = psy_chg_get_charger_state(charger);
@@ -1138,7 +1114,6 @@ static int sm5705_chg_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
 		val->intval = sm5705_get_charge_current(charger);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
@@ -1162,6 +1137,11 @@ static int sm5705_chg_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_ENERGY_NOW:
 		return -ENODATA;
+#if defined(CONFIG_BATTERY_SWELLING_SELF_DISCHARGING)
+	case POWER_SUPPLY_PROP_RESISTANCE:
+		val->intval = sm5705_charger_get_discharging_force_status(charger);
+		break;
+#endif
 	default:
 		pr_err("un-known Power-supply property type (psp=%d)\n", psp);
 		return -EINVAL;
@@ -1239,65 +1219,6 @@ static enum power_supply_property sm5705_otg_props[] = {
 
 	pr_info("schedule work done.\n");
 }
-
-#if defined(CONFIG_USE_POGO)
-static void sm5705_pogo_work(struct work_struct *work)
-{
-	struct sm5705_charger_data *charger =
-		container_of(work, struct sm5705_charger_data, pogo_work.work);
-	union power_supply_propval value;
-	int wpcin_state;
-	unsigned char reg_data;
-
-	sm5705_read_reg(charger->i2c, SM5705_REG_STATUS1, &reg_data);
-	pr_info("%s: REG_STATUS1=0x%x\n", __func__, reg_data);
-
-	wpcin_state = (reg_data & SM5705_STATUS1_WPCINPOK) ? 1 : 0;
-
-	pr_info("irq_wpcin_state = %d, wpcin_state = %d \n", charger->irq_wpcin_state, wpcin_state);
-
-	if ((charger->irq_wpcin_state == 0) && (wpcin_state == 1)) {
-		value.intval = 1;
-		psy_do_property("wireless", set, POWER_SUPPLY_PROP_ONLINE, value);
-
-		pr_info("%s: pogo activated\n", __func__);
-	} else if ((charger->irq_wpcin_state == 1) && (wpcin_state == 0)) {
-		value.intval = 0;
-		psy_do_property("wireless", set, POWER_SUPPLY_PROP_ONLINE, value);
-
-		pr_info("%s: pogo de-activated\n", __func__);
-	}
-
-	pr_info("w(%d to %d)\n", charger->irq_wpcin_state, wpcin_state);
-
-	charger->irq_wpcin_state = wpcin_state;
-
-	wake_unlock(&charger->wpc_wake_lock);
-	pr_info("schedule pogo work done.\n");
-}
-#endif /* CONFIG_USE_POGO */
-
-#if EN_NOBAT_IRQ
-static void sm5705_nobat_work(struct work_struct *work)
-{
-	struct sm5705_charger_data *charger =
-		container_of(work, struct sm5705_charger_data, nobat_work.work);
-
-        if (charger->is_jig_on) {
-                pr_info("%s : skip battery check\n", __func__);
-                return;
-        }
-
-	pr_info("%s: schedule work start.\n", __func__);
-
-	if (sm5705_CHG_get_INT_STATUS(charger, SM5705_INT_STATUS2, SM5705_INT_STATUS2_NOBAT)) {
-		pr_info("%s: buck off because battery is not exist\n", __func__);
-		sm5705_update_reg(charger->i2c, SM5705_REG_CNTL, SM5705_CHARGER_OP_MODE_SUSPEND, 0x07);
-	}
-
-	pr_info("%s: schedule work done.\n", __func__);
-}
-#endif /*EN_NOBAT_IRQ*/
 
 #if EN_TOPOFF_IRQ
 static void sm5705_topoff_work(struct work_struct *work)
@@ -1546,38 +1467,6 @@ static irqreturn_t sm5705_chg_vbus_in_isr(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-#if defined(CONFIG_USE_POGO)
-static irqreturn_t sm5705_chg_wpcin_pok_pogo_isr(int irq, void *data)
-{
-	struct sm5705_charger_data *charger = data;
-	unsigned long delay;
-
-	delay = msecs_to_jiffies(0);
-	pr_info("POGO IRQ=%d delay = %ld\n", irq, delay);
-
-	wake_lock(&charger->wpc_wake_lock);
-	cancel_delayed_work(&charger->pogo_work);
-	queue_delayed_work(charger->wqueue, &charger->pogo_work, delay);
-
-	return IRQ_HANDLED;
-}
-#endif
-
-#if EN_NOBAT_IRQ
-static irqreturn_t sm5705_chg_nobat_isr(int irq, void *data)
-{
-	struct sm5705_charger_data *charger = data;
-	unsigned long delay;
-
-	delay = msecs_to_jiffies(0);
-	pr_info("NOBAT IRQ=%d delay = %ld\n", irq, delay);
-
-	queue_delayed_work(charger->wqueue, &charger->nobat_work, delay);
-
-	return IRQ_HANDLED;
-}
-#endif /*EN_NOBAT_IRQ*/
-
 #if EN_TOPOFF_IRQ
 static irqreturn_t sm5705_chg_topoff_isr(int irq, void *data)
 {
@@ -1615,6 +1504,20 @@ static irqreturn_t sm5705_chg_otgfail_isr(int irq, void *data)
 	return IRQ_HANDLED;
 }
 #endif /*EN_OTGFAIL_IRQ*/
+
+static irqreturn_t sm5705_chg_done_isr(int irq, void *data)
+{
+	struct sm5705_charger_data *charger = data;
+
+	pr_info("%s: start.\n", __func__);
+
+	/* nCHG pin toggle */
+	gpio_direction_output(charger->pdata->chg_gpio_en, charger->is_charging);
+	msleep(10);
+	gpio_direction_output(charger->pdata->chg_gpio_en, !(charger->is_charging));
+
+	return IRQ_HANDLED;
+}
 
 #if defined(SM5705_USED_WIRELESS_CHARGER)
 static irqreturn_t sm5705_chg_wpcin_pok_isr(int irq, void *data)
@@ -1847,8 +1750,6 @@ static int _init_sm5705_charger_info(struct platform_device *pdev,
 	charger->cable_type = POWER_SUPPLY_TYPE_BATTERY;
 	charger->is_mdock = false;
 	charger->is_rev2_wa_done = false;
-	charger->irq_wpcin_state = 0;
-        charger->is_jig_on = false;
 
 	/* Request GPIO pin - CHG_IN */
 	if (charger->pdata->chg_gpio_en) {
@@ -1866,18 +1767,12 @@ static int _init_sm5705_charger_info(struct platform_device *pdev,
 		return -ENOMEM;
 	}
 
-#if defined(CONFIG_USE_POGO)
-	INIT_DELAYED_WORK(&charger->pogo_work, sm5705_pogo_work);
-#endif
 #if defined(SM5705_USED_WIRELESS_CHARGER)
 	INIT_DELAYED_WORK(&charger->wpc_work, wpc_detect_work);
 	INIT_DELAYED_WORK(&charger->wc_afc_work, wc_afc_detect_work);
 #endif
 	if (charger->pdata->support_slow_charging)
 		INIT_DELAYED_WORK(&charger->aicl_work, sm5705_aicl_work);
-#if EN_NOBAT_IRQ
-	INIT_DELAYED_WORK(&charger->nobat_work, sm5705_nobat_work);
-#endif
 #if EN_TOPOFF_IRQ
 	INIT_DELAYED_WORK(&charger->topoff_work, sm5705_topoff_work);
 #endif
@@ -1894,13 +1789,6 @@ static int _init_sm5705_charger_info(struct platform_device *pdev,
 	charger->irq_wpcin_pok = pdata->irq_base + SM5705_WPCINPOK_IRQ;
 	charger->irq_vbus_pok = pdata->irq_base + SM5705_VBUSPOK_IRQ;
 	charger->irq_aicl = pdata->irq_base + SM5705_AICL_IRQ;
-#if defined(CONFIG_USE_POGO)
-	charger->irq_wpcin_pok_pogo = pdata->irq_base + SM5705_WPCINPOK_IRQ;
-	charger->irq_wpcin_uvlo_pogo = pdata->irq_base + SM5705_WPCINUVLO_IRQ;
-#endif
-#if EN_NOBAT_IRQ
-	charger->irq_nobat = pdata->irq_base + SM5705_NOBAT_IRQ;
-#endif
 #if EN_TOPOFF_IRQ
 	charger->irq_topoff = pdata->irq_base + SM5705_TOPOFF_IRQ;
 #endif
@@ -1920,12 +1808,9 @@ static void sm5705_charger_initialize(struct sm5705_charger_data *charger)
 		charger->pdata->chg_float_voltage);
 
 	/* Auto-Stop configuration for Emergency status */
-	sm5705_CHG_set_TOPOFF(charger, 250);
+	sm5705_CHG_set_TOPOFF(charger, 300);
 	sm5705_CHG_set_TOPOFF_TMR(charger, SM5705_TOPOFF_TIMER_45m);
 	sm5705_CHG_enable_AUTOSTOP(charger, 1);
-#if defined(CONFIG_USE_POGO)
-	sm5705_CHG_set_external_boost(charger, 0);
-#endif
 
 	sm5705_CHG_set_BATREG(charger, charger->pdata->chg_float_voltage);
 
@@ -1961,6 +1846,7 @@ static void sm5705_charger_initialize(struct sm5705_charger_data *charger)
 static int sm5705_charger_probe(struct platform_device *pdev)
 {
 	struct sm5705_dev *sm5705 = dev_get_drvdata(pdev->dev.parent);
+	struct sm5705_platform_data *pdata = dev_get_platdata(sm5705->dev);
 	struct sm5705_charger_data *charger;
 	int ret = 0;
 
@@ -2017,20 +1903,6 @@ static int sm5705_charger_probe(struct platform_device *pdev)
 	sm5705_charger_oper_table_init(charger->i2c);
 
 	/* Request IRQ */
-#if defined(CONFIG_USE_POGO)
-	ret = request_threaded_irq(charger->irq_wpcin_pok_pogo, NULL,
-			sm5705_chg_wpcin_pok_pogo_isr, IRQF_TRIGGER_FALLING, "pogo-pok-int", charger);
-	if (ret) {
-		pr_err("fail to request wpcin pogo IRQ: %d: %d\n", charger->irq_wpcin_pok_pogo, ret);
-		goto err_power_supply_register_otg;
-	}
-	ret = request_threaded_irq(charger->irq_wpcin_uvlo_pogo, NULL,
-			sm5705_chg_wpcin_pok_pogo_isr, IRQF_TRIGGER_FALLING, "pogo-uvlo-int", charger);
-	if (ret) {
-		pr_err("fail to request wpcin pogo IRQ: %d: %d\n", charger->irq_wpcin_uvlo_pogo, ret);
-		goto err_power_supply_register_otg;
-	}
-#endif /* CONFIG_USE_POGO */
 #if defined(SM5705_USED_WIRELESS_CHARGER)
 	ret = request_threaded_irq(charger->irq_wpcin_pok, NULL,
 			sm5705_chg_wpcin_pok_isr, IRQF_TRIGGER_FALLING, "wpc-int", charger);
@@ -2045,14 +1917,6 @@ static int sm5705_charger_probe(struct platform_device *pdev)
 		pr_err("fail to request chgin IRQ: %d: %d\n", charger->irq_vbus_pok, ret);
 		goto err_power_supply_register_otg;
 	}
-#if EN_NOBAT_IRQ
-	ret = request_threaded_irq(charger->irq_nobat, NULL,
-			sm5705_chg_nobat_isr, 0, "nobat-irq", charger);
-	if (ret < 0) {
-		pr_err("fail to request nobat IRQ: %d: %d\n", charger->irq_nobat, ret);
-		goto err_power_supply_register_otg;
-	}
-#endif /*EN_NOBAT_IRQ*/
 #if EN_TOPOFF_IRQ
 	ret = request_threaded_irq(charger->irq_topoff, NULL,
 			sm5705_chg_topoff_isr, 0, "topoff-irq", charger);
@@ -2069,6 +1933,13 @@ static int sm5705_charger_probe(struct platform_device *pdev)
 		goto err_power_supply_register_otg;
 	}
 #endif
+	ret = request_threaded_irq(charger->irq_done, NULL,
+			sm5705_chg_done_isr, 0, "done-irq", charger);
+	if (ret < 0) {
+		pr_err("fail to request chgin IRQ: %d: %d\n", charger->irq_done, ret);
+		goto err_power_supply_register_otg;
+	}
+
 	ret = sm5705_chg_create_attrs(charger->psy_chg.dev);
 	if (ret){
 		pr_err("Failed to create_attrs\n");
@@ -2085,6 +1956,9 @@ err_power_supply_register_chg:
 	power_supply_unregister(&charger->psy_chg);
 err_power_supply_register:
 	destroy_workqueue(charger->wqueue);
+#ifdef CONFIG_OF
+	kfree(pdata->charger_data);
+#endif
 	mutex_destroy(&charger->charger_mutex);
 err_free:
 	kfree(charger);
@@ -2096,34 +1970,21 @@ static int sm5705_charger_remove(struct platform_device *pdev)
 {
 	struct sm5705_charger_data *charger = platform_get_drvdata(pdev);
 
-#if defined(CONFIG_USE_POGO)
-	cancel_delayed_work(&charger->pogo_work);
-#endif
 #if defined(SM5705_USED_WIRELESS_CHARGER)
 	cancel_delayed_work(&charger->wpc_work);
 	cancel_delayed_work(&charger->wc_afc_work);
 #endif
 	if (charger->pdata->support_slow_charging)
 		cancel_delayed_work(&charger->aicl_work);
-#if EN_NOBAT_IRQ
-	cancel_delayed_work(&charger->nobat_work);
-#endif
 #if EN_TOPOFF_IRQ
 	cancel_delayed_work(&charger->topoff_work);
 #endif
 	cancel_delayed_work(&charger->op_mode_switch_work);
 	destroy_workqueue(charger->wqueue);
-#if defined(CONFIG_USE_POGO)
-	free_irq(charger->irq_wpcin_pok_pogo, NULL);
-	free_irq(charger->irq_wpcin_uvlo_pogo, NULL);
-#endif
 #if defined(SM5705_USED_WIRELESS_CHARGER)
 	free_irq(charger->irq_wpcin_pok, NULL);
 #endif
 	free_irq(charger->irq_vbus_pok, NULL);
-#if EN_NOBAT_IRQ
-	free_irq(charger->irq_nobat, NULL);
-#endif
 #if EN_TOPOFF_IRQ
 	free_irq(charger->irq_topoff, NULL);
 #endif
@@ -2141,6 +2002,9 @@ static void sm5705_charger_shutdown(struct device *dev)
 {
 	struct sm5705_charger_data *charger = dev_get_drvdata(dev);
 
+#if defined(CONFIG_BATTERY_SWELLING_SELF_DISCHARGING)
+	sm5705_charger_en_discharing_force(charger, false);
+#endif
 	sm5705_update_reg(charger->i2c, SM5705_REG_CNTL,
 			SM5705_CHARGER_OP_MODE_CHG_ON, 0x07);
 

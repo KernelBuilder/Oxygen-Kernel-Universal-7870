@@ -159,14 +159,11 @@ static int ta_notification(struct notifier_block *nb,
 				goto err;
 		}
 #endif
-
-		if (!factory_mode) {
-			/* CHGIN_ENGH = 0 */
-			ret = s2mu005_update_reg(led_data->i2c,
-				S2MU005_REG_FLED_CTRL1, 0x00, 0x80);
-			if (ret < 0)
-				goto err;
-		}
+		/* CHGIN_ENGH = 0 */
+		ret = s2mu005_update_reg(led_data->i2c,
+			S2MU005_REG_FLED_CTRL1, 0x00, 0x80);
+		if (ret < 0)
+			goto err;
 
 		break;
 	case MUIC_NOTIFY_CMD_ATTACH:
@@ -212,7 +209,7 @@ static void torch_led_on_off(int value)
 	u8 temp;
 
 	pr_info("%s : value(%d), attach_ta(%d)\n",
-		__func__, value, g_led_datas[S2MU005_FLASH_LED]->attach_ta);
+		__func__, value, g_led_datas[S2MU005_FLASH_LED]->attach_ta);	
 
 	if (value && g_led_datas[S2MU005_FLASH_LED]->attach_ta) { //torch on & ta attach
 		ret = s2mu005_update_reg(g_led_datas[S2MU005_FLASH_LED]->i2c,
@@ -221,7 +218,7 @@ static void torch_led_on_off(int value)
 			pr_err("%s : CHGIN_ENGH = 1 fail\n", __func__);
 	}
 
-	if ((value == 0) && !factory_mode) { // torch off
+	if (value == 0) { // torch off
 		s2mu005_read_reg(g_led_datas[S2MU005_FLASH_LED]->i2c,
 			S2MU005_REG_FLED_CTRL1, &temp);
 		pr_info("%s : 0x%2X read value - 0x%2X\n", __func__,
@@ -474,7 +471,6 @@ static int s2mu005_led_setup(struct s2mu005_led_data *led_data)
 		goto out;
 
 	/* factory mode additional setting */
-	pr_info("%s : factory_mode %d \n", __func__, factory_mode);
 	if (factory_mode) {
 		ret = s2mu005_update_reg(led_data->i2c, S2MU005_REG_FLED_CTRL1,
 						0x80, 0x80);

@@ -405,9 +405,9 @@ static ssize_t read_checksum_show(struct device *dev,
 	struct sec_cmd_data *sec = dev_get_drvdata(dev);
 	struct fts_ts_info *info = container_of(sec, struct fts_ts_info, sec);
 
-	input_info(true, &info->client->dev, "%s: crc fail count in NV: %d\n", __func__, info->nv_crc_fail_count);
+	input_info(true, &info->client->dev, "%s: %d\n", __func__, info->checksum_result);
 
-	return snprintf(buf, SEC_CMD_BUF_SIZE, "%d", info->nv_crc_fail_count);
+	return snprintf(buf, SEC_CMD_BUF_SIZE, "%d", info->checksum_result);
 }
 
 
@@ -418,9 +418,9 @@ static ssize_t clear_checksum_store(struct device *dev,
 	struct sec_cmd_data *sec = dev_get_drvdata(dev);
 	struct fts_ts_info *info = container_of(sec, struct fts_ts_info, sec);
 
-//	info->checksum_result = 0;
+	info->checksum_result = 0;
 
-	input_info(true, &info->client->dev, "%s:nothing\n", __func__);
+	input_info(true, &info->client->dev, "%s: clear\n", __func__);
 
 	return count;
 }
@@ -1216,43 +1216,13 @@ static void get_chip_name(void *device_data)
 	input_info(true, &info->client->dev, "%s: %s\n", __func__, buff);
 }
 
-static int get_mis_cal(struct fts_ts_info *info)
-{
-	unsigned char regAdd[3] = { 0 };
-	unsigned char data[2] = { 0 };
-	int ret;
-
-	regAdd[0] = 0xC7;
-	regAdd[1] = 0x05;
-
-	ret = fts_write_reg(info, regAdd, 2);
-	if (ret < 0) {
-		input_err(true, &info->client->dev, "%s: [ERROR] failed to write\n", __func__);
-		return -EIO;
-	}
-
-	fts_delay(50);
-
-	regAdd[0] = 0xD0;
-	regAdd[1] = 0x00;
-	regAdd[2] = 0x67;
-
-	ret = fts_read_reg(info, regAdd, 3, data, 2);
-	if (ret < 0) {
-		input_err(true, &info->client->dev, "%s: [ERROR] failed to read\n", __func__);
-		return -EIO;
-	}
-
-	input_err(true, &info->client->dev, "%s: %02X, %02X\n", __func__, data[0], data[1]);
-
-	return data[1];
-}
-
 static void get_mis_cal_info(void *device_data)
 {
 	struct sec_cmd_data *sec = (struct sec_cmd_data *)device_data;
 	struct fts_ts_info *info = container_of(sec, struct fts_ts_info, sec);
 	char buff[SEC_CMD_STR_LEN] = { 0 };
+	unsigned char regAdd[3] = { 0 };
+	unsigned char data[2] = { 0 };
 	int ret;
 
 	sec_cmd_set_default_result(sec);
@@ -1265,15 +1235,36 @@ static void get_mis_cal_info(void *device_data)
 		return;
 	}
 
-	ret = get_mis_cal(info);
+	regAdd[0] = 0xC7;
+	regAdd[1] = 0x05;
+
+	ret = fts_write_reg(info, regAdd, 2);
 	if (ret < 0) {
+		input_err(true, &info->client->dev, "%s: [ERROR] failed to write\n", __func__);
 		snprintf(buff, sizeof(buff), "%s", "NG");
 		sec_cmd_set_cmd_result(sec, buff, strnlen(buff, sizeof(buff)));
 		sec->cmd_state = SEC_CMD_STATUS_FAIL;
 		return;
 	}
 
-	snprintf(buff, sizeof(buff), "%d", ret);
+	fts_delay(50);
+
+	regAdd[0] = 0xD0;
+	regAdd[1] = 0x00;
+	regAdd[2] = 0x67;
+
+	ret = fts_read_reg(info, regAdd, 3, data, 2);
+	if (ret < 0) {
+		input_err(true, &info->client->dev, "%s: [ERROR] failed to read\n", __func__);
+		snprintf(buff, sizeof(buff), "%s", "NG");
+		sec_cmd_set_cmd_result(sec, buff, strnlen(buff, sizeof(buff)));
+		sec->cmd_state = SEC_CMD_STATUS_FAIL;
+		return;
+	}
+
+	input_err(true, &info->client->dev, "%s: %02X, %02X\n", __func__, data[0], data[1]);
+
+	snprintf(buff, sizeof(buff), "%d", data[1]);
 	sec_cmd_set_cmd_result(sec, buff, strnlen(buff, sizeof(buff)));
 	sec->cmd_state = SEC_CMD_STATUS_OK;
 	input_info(true, &info->client->dev, "%s: %s\n", __func__, buff);
@@ -1363,31 +1354,21 @@ static void get_checksum_data(void *device_data)
 		return;
 	}
 
-	rc = fts_systemreset(info, 10);
-	if (rc != FTS_NOT_ERROR) {
-		snprintf(buff, sizeof(buff), "NG");
-		sec_cmd_set_cmd_result(sec, buff, strnlen(buff, sizeof(buff)));
+	fts_interrupt_set(info, INT_DISABLE);
+
+	rc = info->fts_get_sysinfo_data(info, FTS_SI_CONFIG_CHECKSUM, 5, data);
+	if (rc <= 0) {
+		input_err(true, info->dev, "%s: Get checksum data Read Fail!! [Data : %2X%2X%2X%2X]\n", __func__, data[1], data[0], data[3], data[2]);
 		sec->cmd_state = SEC_CMD_STATUS_FAIL;
-		input_info(true, &info->client->dev, "%s: %s\n", __func__, buff);
-	} else {
-		fts_reinit(info);
-
-		fts_interrupt_set(info, INT_DISABLE);
-
-		rc = info->fts_get_sysinfo_data(info, FTS_SI_CONFIG_CHECKSUM, 5, data);
-		if (rc <= 0) {
-			input_err(true, info->dev, "%s: Get checksum data Read Fail!! [Data : %2X%2X%2X%2X]\n", __func__, data[1], data[0], data[3], data[2]);
-			sec->cmd_state = SEC_CMD_STATUS_FAIL;
-			return;
-		}
-
-		fts_interrupt_set(info, INT_ENABLE);
-
-		snprintf(buff, sizeof(buff), "%02X%02X%02X%02X", data[1], data[0], data[3], data[2]);
-		sec_cmd_set_cmd_result(sec, buff, strnlen(buff, sizeof(buff)));
-		sec->cmd_state = SEC_CMD_STATUS_OK;
-		input_info(true, &info->client->dev, "%s: %s\n", __func__, buff);
+		return;
 	}
+
+	fts_interrupt_set(info, INT_ENABLE);
+
+	snprintf(buff, sizeof(buff), "%02X%02X%02X%02X", data[1], data[0], data[3], data[2]);
+	sec_cmd_set_cmd_result(sec, buff, strnlen(buff, sizeof(buff)));
+	sec->cmd_state = SEC_CMD_STATUS_OK;
+	input_info(true, &info->client->dev, "%s: %s\n", __func__, buff);
 }
 
 static void run_reference_read(void *device_data)
@@ -2301,10 +2282,10 @@ static void run_cx_data_read(void *device_data)
 
 	/* Request compensation data */
 	regAdd[0] = 0xB8;
-	regAdd[1] = 0x02;		// MUTUAL CX
+	regAdd[1] = 0x04;		// MUTUAL CX (LPA)
 	regAdd[2] = 0x00;
 	fts_write_reg(info, &regAdd[0], 3);
-	fts_fw_wait_for_specific_event(info, EVENTID_STATUS_REQUEST_COMP, 0x02, 0x00);
+	fts_fw_wait_for_specific_event(info, EVENTID_STATUS_REQUEST_COMP, 0x04, 0x00);
 
 	/* Read an address of compensation data */
 	regAdd[0] = 0xD0;
@@ -2426,10 +2407,10 @@ static void get_cx_all_data(void *device_data)
 
 	/* Request compensation data */
 	regAdd[0] = 0xB8;
-	regAdd[1] = 0x02;		// MUTUAL CX
+	regAdd[1] = 0x04;		// MUTUAL CX (LPA)
 	regAdd[2] = 0x00;
 	fts_write_reg(info, &regAdd[0], 3);
-	fts_fw_wait_for_specific_event(info, EVENTID_STATUS_REQUEST_COMP, 0x02, 0x00);
+	fts_fw_wait_for_specific_event(info, EVENTID_STATUS_REQUEST_COMP, 0x04, 0x00);
 
 	/* Read an address of compensation data */
 	regAdd[0] = 0xD0;
@@ -2845,14 +2826,16 @@ static void run_force_pressure_calibration(void *device_data)
 	fts_interrupt_set(info, INT_ENABLE);
 	enable_irq(info->irq);
 
-	fts_get_factory_debug_information(info);
+	fts_get_pressure_calibration_information(info);
+	if (info->pressure_cal_base == 0xFF)
+		info->pressure_cal_base = 0;
 
 	info->pressure_cal_base++;
 
 	if (info->pressure_cal_base > 0xFE)
 		info->pressure_cal_base = 0xFE;
 
-	fts_set_factory_debug_information(info, info->pressure_cal_base, info->pressure_cal_delta, info->nv_crc_fail_count);
+	fts_set_pressure_calibration_information(info, info->pressure_cal_base, info->pressure_cal_delta);
 
 #ifdef FTS_SUPPORT_STRINGLIB
 	ret = info->fts_write_to_string(info, &addr, &info->lowpower_flag, sizeof(info->lowpower_flag));
@@ -3233,14 +3216,16 @@ static void set_pressure_strength(void *device_data)
 #endif
 	fts_interrupt_set(info, INT_ENABLE);
 
-	fts_get_factory_debug_information(info);
+	fts_get_pressure_calibration_information(info);
+	if (info->pressure_cal_delta == 0xFF)
+		info->pressure_cal_delta = 0;
 
 	info->pressure_cal_delta++;
 
 	if (info->pressure_cal_delta > 0xFE)
 		info->pressure_cal_delta = 0xFE;
 
-	fts_set_factory_debug_information(info, info->pressure_cal_base, info->pressure_cal_delta, info->nv_crc_fail_count);
+	fts_set_pressure_calibration_information(info, info->pressure_cal_base, info->pressure_cal_delta);
 
 	sec->cmd_state = SEC_CMD_STATUS_OK;
 	sec_cmd_set_cmd_result(sec, buff, strnlen(buff, sizeof(buff)));
@@ -3948,12 +3933,10 @@ static void get_tsp_test_result(void *device_data)
 	} else {
 		snprintf(buff, sizeof(buff), "M:%s, M:%d, A:%s, A:%d",
 				info->test_result.module_result == 0 ? "NONE" :
-				info->test_result.module_result == 1 ? "FAIL" :
-				info->test_result.module_result == 2 ? "PASS" : "A",
+				info->test_result.module_result == 1 ? "FAIL" : "PASS",
 				info->test_result.module_count,
 				info->test_result.assy_result == 0 ? "NONE" :
-				info->test_result.assy_result == 1 ? "FAIL" :
-				info->test_result.assy_result == 2 ? "PASS" : "A",
+				info->test_result.assy_result == 1 ? "FAIL" : "PASS",
 				info->test_result.assy_count);
 
 		sec_cmd_set_cmd_result(sec, buff, strlen(buff));
@@ -3975,12 +3958,10 @@ static int fts_set_tsp_test_result(struct fts_ts_info *info)
 	input_info(true, &info->client->dev, "%s: [0x%X] M:%s, M:%d, A:%s, A:%d\n",
 		__func__, info->test_result.data[0],
 		info->test_result.module_result == 0 ? "NONE" :
-		info->test_result.module_result == 1 ? "FAIL" :
-		info->test_result.module_result == 2 ? "PASS" : "A",
+		info->test_result.module_result == 1 ? "FAIL" : "PASS",
 		info->test_result.module_count,
 		info->test_result.assy_result == 0 ? "NONE" :
-		info->test_result.assy_result == 1 ? "FAIL" :
-		info->test_result.assy_result == 2 ? "PASS" : "A",
+		info->test_result.assy_result == 1 ? "FAIL" : "PASS",
 		info->test_result.assy_count);
 
 	data = kzalloc(nvm_data[FACTORY_TEST_RESULT].length, GFP_KERNEL);
@@ -4241,11 +4222,11 @@ int fts_get_calibration_information(struct fts_ts_info *info)
 }
 #endif
 
-int fts_set_factory_debug_information(struct fts_ts_info *info, unsigned char base, unsigned char delta, unsigned char checksum)
+int fts_set_pressure_calibration_information(struct fts_ts_info *info, unsigned char base, unsigned char delta)
 {
 	unsigned char *data = NULL;
 	int ret;
-
+	
 	/* save calibration count */
 	data = kzalloc(nvm_data[SEC_FACTORY_DEBUG].length, GFP_KERNEL);
 	if (!data) {
@@ -4256,7 +4237,7 @@ int fts_set_factory_debug_information(struct fts_ts_info *info, unsigned char ba
 
 	data[0] = base;
 	data[1] = delta;
-	data[2] = checksum;
+	data[2] = 0x00;
 	data[3] = 0x00;
 
 	/* SEC_FACTORY_DEBUG index is 4. refer "fts_nvm_data_type" write command */
@@ -4270,7 +4251,7 @@ int fts_set_factory_debug_information(struct fts_ts_info *info, unsigned char ba
 	return ret;
 }
 
-int fts_get_factory_debug_information(struct fts_ts_info *info)
+int fts_get_pressure_calibration_information(struct fts_ts_info *info)
 {
 	unsigned char *data = NULL;
 	int ret;
@@ -4287,22 +4268,10 @@ int fts_get_factory_debug_information(struct fts_ts_info *info)
 		input_err(true, &info->client->dev,
 			"%s: set failed. ret: %d\n", __func__, ret);
 	} else {
-		if (data[0] == 0xFF)
-			data[0] = 0x00;
 		info->pressure_cal_base = data[0];
-
-		if (data[1] == 0xFF)
-			data[1] = 0x00;
 		info->pressure_cal_delta = data[1];
-
-		if (data[2] == 0xFF)
-			data[2] = 0x00;
-		info->nv_crc_fail_count = data[2];
-
 		input_info(true, &info->client->dev,
-			"%s: pressure base:%X, delta:%X, crc fail count:%X\n", __func__,
-			info->pressure_cal_base, info->pressure_cal_delta,
-			info->nv_crc_fail_count);
+			"%s: pressure base:%X, delta:%X\n", __func__, info->pressure_cal_base, info->pressure_cal_delta);
 	}
 
 	kfree(data);
@@ -5550,30 +5519,6 @@ static void debug(void *device_data)
 	input_info(true, &info->client->dev, "%s: %s\n", __func__, buff);
 }
 
-/* for Tablet model : TSP connection check : using mis_cal data
- * return true : connected
- * return false : not connected or error */
-static bool tsp_connection_check(struct fts_ts_info *info)
-{
-	int ret;
-
-	disable_irq(info->irq);
-	/* 1. Auto-Tune & NOT save data */
-	fts_command(info, CX_TUNNING);
-	msleep(300);
-	fts_fw_wait_for_event_D3(info, STATUS_EVENT_MUTUAL_AUTOTUNE_DONE, 0x00);
-
-	fts_command(info, SELF_AUTO_TUNE);
-	msleep(300);
-	fts_fw_wait_for_event_D3(info, STATUS_EVENT_SELF_AUTOTUNE_DONE_D3, 0x00);
-	enable_irq(info->irq);
-
-	/* 2. check mis_cal info */
-	ret = get_mis_cal(info);
-
-	return (ret == 0) ? true : false;
-}
-
 static void run_force_calibration(void *device_data)
 {
 	struct sec_cmd_data *sec = (struct sec_cmd_data *)device_data;
@@ -5585,27 +5530,21 @@ static void run_force_calibration(void *device_data)
 
 	if (info->touch_stopped) {
 		input_err(true, &info->client->dev, "%s: [ERROR] Touch is stopped\n",
-			__func__);
+		__func__);
 		snprintf(buff, sizeof(buff), "%s", "TSP turned off");
+		sec_cmd_set_cmd_result(sec, buff, strnlen(buff, sizeof(buff)));
+		sec->cmd_state = SEC_CMD_STATUS_NOT_APPLICABLE;
 		goto autotune_fail;
 	}
 
 	if (info->rawdata_read_lock == 1) {
 		input_err(true, &info->client->dev, "%s: ramdump mode is runing, %d\n", __func__, info->rawdata_read_lock);
-		snprintf(buff, sizeof(buff), "%s", "NG");
 		goto autotune_fail;
 	}
 
 	if (info->touch_count > 0) {
 		touch_on = true;
 		input_err(true, info->dev, "%s: finger on touch(%d)\n", __func__, info->touch_count);
-	}
-
-	/* for Tablet model : TSP connection check at pretest apk */
-	if (info->external_factory && !tsp_connection_check(info)) {
-		input_err(true, info->dev, "%s: TSP is not connected. Do not run calibration\n", __func__);
-		snprintf(buff, sizeof(buff), "%s", "NG_TSP_NOT_CONNECT");
-		goto autotune_fail;
 	}
 
 	disable_irq(info->irq);
@@ -5647,6 +5586,8 @@ static void run_force_calibration(void *device_data)
 			else
 				info->cal_count = PAT_EXT_FACT;
 
+			/* not to enter external factory mode without setting everytime */
+			info->external_factory = false;
 		} else {
 			/*change  from ( virtual pat  or vpat by external fatory )  to real pat by forced calibarion by LCIA   */
 			if (info->cal_count >= PAT_MAGIC_NUMBER)
@@ -5696,16 +5637,11 @@ static void run_force_calibration(void *device_data)
 	}
 	sec_cmd_set_cmd_result(sec, buff, strnlen(buff, sizeof(buff)));
 
-	/* not to enter external factory mode without setting everytime */
-	info->external_factory = false;
-
 	input_info(true, &info->client->dev, "%s: %s\n", __func__, buff);
 	return;
 
 autotune_fail:
-	/* not to enter external factory mode without setting everytime */
-	info->external_factory = false;
-
+	snprintf(buff, sizeof(buff), "%s", "NG");
 	sec->cmd_state = SEC_CMD_STATUS_FAIL;
 	sec_cmd_set_cmd_result(sec, buff, strnlen(buff, sizeof(buff)));
 

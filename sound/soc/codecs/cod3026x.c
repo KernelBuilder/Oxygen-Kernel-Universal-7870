@@ -798,9 +798,13 @@ static int cod3026x_mute_mic(struct snd_soc_codec *codec, bool on)
 	if (on) {
 		mutex_lock(&cod3026x->adc_mute_lock);
 		cod3026x_adc_digital_mute(codec, true);
+		snd_soc_update_bits(cod3026x->codec, COD3026X_12_PD_AD2,
+				PDB_MIC_BST3_MASK, 0);
 		mutex_unlock(&cod3026x->adc_mute_lock);
 	} else {
 		mutex_lock(&cod3026x->adc_mute_lock);
+		snd_soc_update_bits(cod3026x->codec, COD3026X_12_PD_AD2,
+				PDB_MIC_BST3_MASK, PDB_MIC_BST3_MASK);
 		cod3026x_adc_digital_mute(codec, false);
 		mutex_unlock(&cod3026x->adc_mute_lock);
 	}
@@ -2460,9 +2464,6 @@ static void cod3026x_water_det_work(struct work_struct *work)
 	dev_dbg(cod3026x->dev, "%s called.\n", __func__);
 	dev_dbg(cod3026x->dev, " %s : jack det %d\n" , __func__, jackdet->jack_det);
 
-	if (cod3026x->is_suspend)
-	    regcache_cache_only(cod3026x->regmap, false);
-
 	snd_soc_write(codec, 0x84, 0x01);
 	/* read adc for water detection */
 	if (cod3026x->use_det_gdet_adc_mode == 1) {
@@ -2475,9 +2476,6 @@ static void cod3026x_water_det_work(struct work_struct *work)
 	dev_dbg(cod3026x->dev, " %s gdet adc: %d\n" , __func__, gdet_adc);
 	waterdet->gdet_adc_val = gdet_adc;
 	snd_soc_write(codec, 0x84, 0x0d);
-
-	if (cod3026x->is_suspend)
-	    regcache_cache_only(cod3026x->regmap, true);
 
 	if (gdet_adc != 0 && gdet_adc >= cod3026x->water_threshold_adc_min1) {
 		if (gdet_adc < COD3026X_WATER_DET_THRESHOLD_MAX) {
@@ -2818,17 +2816,7 @@ static void cod3026x_buttons_work(struct work_struct *work)
 
 		if (avg > adc_max)
 			adc_max = avg;
-
-		/*
-		 * If set button press delay,
-		 * it was delayed by the set value each time read adc.
-		 */
-		if (j != (ADC_TRACE_NUM2 - 1)) {
-			if (cod3026x->btn_press_delay)
-				msleep(cod3026x->btn_press_delay);
-			else
-				mdelay(ADC_READ_DELAY_MS);
-		}
+		mdelay(ADC_READ_DELAY_MS);
 	}
 	adc_final = adc_max;
 
@@ -2863,14 +2851,6 @@ static void cod3026x_buttons_work(struct work_struct *work)
 
 		dev_err(cod3026x->dev, ":key skipped. ADC %d\n", adc);
 	} else {
-		snd_soc_update_bits(cod3026x->codec, COD3026X_12_PD_AD2,
-				PDB_MIC_BST3_MASK, 0);
-
-		msleep(40);
-
-		snd_soc_update_bits(cod3026x->codec, COD3026X_12_PD_AD2,
-				PDB_MIC_BST3_MASK, PDB_MIC_BST3_MASK);
-
 		jd->button_det = false;
 		input_report_key(cod3026x->input, jd->button_code, 0);
 		input_sync(cod3026x->input);
@@ -3551,8 +3531,7 @@ static void cod3026x_i2c_parse_dt(struct cod3026x_priv *cod3026x)
 	struct device *dev = cod3026x->dev;
 	struct device_node *np = dev->of_node;
 	unsigned int bias_v_conf;
-	int mic_range, mic_delay, btn_rel_val, btn_delay;
-	int water_threshold_min1, water_threshold_min2;
+	int mic_range, mic_delay, btn_rel_val, water_threshold_min1, water_threshold_min2;
 #ifdef CONFIG_SND_SOC_COD30XX_EXT_ANT
     int ant_range;
 #endif
@@ -3631,12 +3610,6 @@ static void cod3026x_i2c_parse_dt(struct cod3026x_priv *cod3026x)
 		cod3026x->btn_release_value = btn_rel_val;
 	else
 		cod3026x->btn_release_value = 1100;
-
-	ret = of_property_read_u32(dev->of_node, "btn-press-delay", &btn_delay);
-	if (!ret)
-		cod3026x->btn_press_delay = btn_delay;
-	else
-		cod3026x->btn_press_delay = 0;
 
 	ret = of_property_read_u32(dev->of_node, "water-threshold-min1", &water_threshold_min1);
 	if (!ret)

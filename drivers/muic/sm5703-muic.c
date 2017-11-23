@@ -1627,7 +1627,7 @@ static void sm5703_muic_detect_dev(struct sm5703_muic_data *muic_data)
 			intr = MUIC_INTR_ATTACH;
 //			new_dev = ATTACHED_DEV_CHARGING_CABLE_MUIC;
 //			pr_info("%s : PS_CABLE DETECTED\n", MUIC_DEV_NAME);
-#if !defined(CONFIG_TYPEB_WATERPROOF_MODEL)
+#if defined(CONFIG_NON_WATERPROOF_MODEL)
 			new_dev = ATTACHED_DEV_UNDEFINED_CHARGING_MUIC;
 			pr_info("%s : UNDEFINED_CHARGING DETECTED\n", MUIC_DEV_NAME);
 #else

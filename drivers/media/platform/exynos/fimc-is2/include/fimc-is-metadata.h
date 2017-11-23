@@ -1547,9 +1547,6 @@ enum camera_op_mode {
 	CAMERA_OP_MODE_GED = 0,   // default
 	CAMERA_OP_MODE_TW,
 	CAMERA_OP_MODE_HAL3_GED,
-	CAMERA_OP_MODE_HAL3_TW,
-	CAMERA_OP_MODE_FAC,
-	CAMERA_OP_MODE_HAL3_FAC,
 };
 
 struct camera2_companion_uctl {

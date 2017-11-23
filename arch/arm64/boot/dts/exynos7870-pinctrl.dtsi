@@ -901,14 +901,6 @@
 			samsung,pin-drv = <2>;
 		};
 
-		fimc_is_mclk2_out: fimc_is_mclk2_out {
-			samsung,pins = "gpf4-4";
-			samsung,pin-function = <1>;
-			samsung,pin-pud = <0>;
-			samsung,pin-drv = <2>;
-			samsung,pin-val = <0>;
-		};
-
 		fimc_is_mclk0_fn: fimc_is_mclk0_fn {
 			samsung,pins = "gpe0-0";
 			samsung,pin-function = <2>;
@@ -921,13 +913,6 @@
 			samsung,pin-function = <2>;
 			samsung,pin-pud = <0>;
 			samsung,pin-drv = <1>;
-		};
-
-		fimc_is_mclk2_fn: fimc_is_mclk2_fn {
-			samsung,pins = "gpf4-4";
-			samsung,pin-function = <2>;
-			samsung,pin-pud = <0>;
-			samsung,pin-drv = <2>;
 		};
 
 		fimc_is_flash: fimc-is-flash {

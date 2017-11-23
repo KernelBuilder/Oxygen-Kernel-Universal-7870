@@ -109,10 +109,6 @@ static struct vps_cfg cfg_HMT = {
 	.name = "HMT",
 	.attr = MATTR(VCOM_USB, VB_ANY),
 };
-static struct vps_cfg cfg_POGO = {
-	.name = "POGO",
-	.attr = MATTR(VCOM_USB, VB_ANY) | MATTR_SUPP,
-};
 static struct vps_cfg cfg_AUDIODOCK = {
 	.name = "Audiodock",
 	.attr = MATTR(VCOM_USB, VB_HIGH),
@@ -179,7 +175,6 @@ static struct vps_tbl_data vps_table[] = {
 	[MDEV(VZW_INCOMPATIBLE)]	= {0x0f, "34K",	&cfg_VZW_INCOMPATIBLE,},
 	[MDEV(SMARTDOCK)]		= {0x10, "40.2K",	&cfg_SMARTDOCK,},
 	[MDEV(HMT)]			= {0x11, "49.9K",	&cfg_HMT,},
-	[MDEV(POGO)]			= {0x11, "49.9K",	&cfg_POGO,},
 	[MDEV(AUDIODOCK)]		= {0x12, "64.9K",	&cfg_AUDIODOCK,},
 	[MDEV(USB_LANHUB)]		= {0x13, "80.07K",	&cfg_USB_LANHUB,},
 	[MDEV(CHARGING_CABLE)]	= {0x14, "102K",	&cfg_CHARGING_CABLE,},
@@ -629,7 +624,6 @@ static int resolve_dedicated_dev(muic_data_t *pmuic, muic_attached_dev_t *pdev, 
 
 		if (val3 & DEV_TYPE3_NO_STD_CHG) {
 			new_dev = ATTACHED_DEV_USB_MUIC;
-			pmuic->is_dcdtmr_intr = true;
 			pr_info("%s : TYPE3 DCD_OUT_TIMEOUT DETECTED\n", MUIC_DEV_NAME);
 
 		} else {
@@ -763,10 +757,10 @@ static int resolve_dedicated_dev(muic_data_t *pmuic, muic_attached_dev_t *pdev, 
 			pr_info("%s : ADC INCOMPATIBLE_VZW DETECTED\n", MUIC_DEV_NAME);
 			break;
 
-		case ADC_POGO:
-			new_dev = ATTACHED_DEV_POGO_MUIC;
+		case ADC_HMT:
+			new_dev = ATTACHED_DEV_HMT_MUIC;
 			intr = MUIC_INTR_ATTACH;
-			pr_info("%s : ADC POGO DETECTED\n", MUIC_DEV_NAME);
+			pr_info("%s : ADC HMT DETECTED\n", MUIC_DEV_NAME);
 			break;
 
 		default:

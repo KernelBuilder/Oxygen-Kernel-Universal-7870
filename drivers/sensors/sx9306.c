@@ -665,7 +665,6 @@ static ssize_t sx9306_normal_threshold_store(struct device *dev,
 
 	SENSOR_INFO("normal threshold %lu\n", val);
 	data->normal_th_buf = data->normal_th = (u8)val;
-	data->ta_th = data->normal_th;
 
 	return count;
 }

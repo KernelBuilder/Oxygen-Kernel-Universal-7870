@@ -36,18 +36,13 @@
 //#define SM5705_WATCHDOG_RESET_TIMER                   SM5705_WATCHDOG_RESET_TIME_120s
 //#define SM5705_SW_SOFT_START      /* default used HW soft-start */
 
-#define EN_NOBAT_IRQ		1
-#define EN_TOPOFF_IRQ		1
+#define EN_TOPOFF_IRQ		0
 #define EN_OTGFAIL_IRQ		1
 
 #define SM5705_STATUS3_OTGFAIL		(1 << 2)
-#if defined(CONFIG_USE_POGO)
-#define SM5705_STATUS1_WPCINPOK		(1 << 4)
-#endif
 
 enum {
 	CHIP_ID = 0,
-	CHARGER_OP_MODE=1,
 };
 ssize_t sm5705_chg_show_attrs(struct device *dev,
 				struct device_attribute *attr, char *buf);
@@ -115,13 +110,6 @@ struct sm5705_charger_data {
 	int irq_aicl;
 	int irq_vbus_pok;
 	int irq_wpcin_pok;
-#if defined(CONFIG_USE_POGO)
-	int irq_wpcin_pok_pogo;
-	int irq_wpcin_uvlo_pogo;
-#endif
-#if EN_NOBAT_IRQ
-	int irq_nobat;
-#endif
 #if EN_TOPOFF_IRQ
 	int irq_topoff;
 #endif
@@ -137,12 +125,6 @@ struct sm5705_charger_data {
 	struct delayed_work wpc_work;
 	struct delayed_work wc_afc_work;
 	struct delayed_work aicl_work;
-#if defined(CONFIG_USE_POGO)
-	struct delayed_work pogo_work;
-#endif
-#if EN_NOBAT_IRQ
-	struct delayed_work nobat_work;
-#endif
 #if EN_TOPOFF_IRQ
 	struct delayed_work topoff_work;
 #endif
@@ -163,7 +145,6 @@ struct sm5705_charger_data {
 	unsigned int input_current;
 	unsigned int charging_current;
 	unsigned int topoff_current;
-        bool is_jig_on;
 	int	irq_wpcin_state;
 	bool topoff_pending;
 	// temp for rev2 SW WA

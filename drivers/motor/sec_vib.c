@@ -66,8 +66,7 @@ int sec_vib_vdd_en(struct timed_output_dev *dev, bool en)
 
 	if (en) {
 		if (ddata->ldo_type == INTERNAL_LDO) {		/* pmic ldo */
-			if (!regulator_is_enabled(ddata->regulator))
-				ret = regulator_enable(ddata->regulator);
+			ret = regulator_enable(ddata->regulator);
 		}
 		else if (ddata->ldo_type == EXTERNAL_LDO) {	/* external ldo */
 			ret = gpio_direction_output(ddata->gpio_ldo_en, 1);
@@ -75,8 +74,7 @@ int sec_vib_vdd_en(struct timed_output_dev *dev, bool en)
 	}
 	else {
 		if (ddata->ldo_type == INTERNAL_LDO) {		/* pmic ldo */
-			if (regulator_is_enabled(ddata->regulator))
-				ret = regulator_disable(ddata->regulator);
+			ret = regulator_disable(ddata->regulator);
 		}
 		else if (ddata->ldo_type == EXTERNAL_LDO) {	/* external ldo */
 			ret = gpio_direction_output(ddata->gpio_ldo_en, 0);

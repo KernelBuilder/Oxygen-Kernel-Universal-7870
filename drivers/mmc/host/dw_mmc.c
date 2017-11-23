@@ -4095,8 +4095,6 @@ int dw_mci_probe(struct dw_mci *host)
 			 && host->pdata->cd_type == DW_MCI_CD_GPIO)
 		 drv_data->misc_control(host, CTRL_REQUEST_EXT_IRQ,
 				 dw_mci_detect_interrupt);
-	if (drv_data && drv_data->misc_control)
-		 drv_data->misc_control(host, CTRL_ADD_SYSFS, NULL);
 
 	if (host->quirks & DW_MCI_QUIRK_IDMAC_DTO)
 		dev_info(host->dev, "Internal DMAC interrupt fix enabled.\n");

@@ -2152,14 +2152,64 @@ static int s5p_mfc_release(struct file *file)
 
 		/* Wait until instance is returned or timeout occured */
 		if (s5p_mfc_wait_for_done_ctx(ctx,
-				S5P_FIMV_R2H_CMD_CLOSE_INSTANCE_RET) == 1) {
-			mfc_err_ctx("It was expired to wait for a CLOSE_INSTANCE\n");
+				S5P_FIMV_R2H_CMD_CLOSE_INSTANCE_RET)) {
+			mfc_err_ctx("Waiting for CLOSE_INSTANCE timed out\n");
+			dev->curr_ctx_drm = ctx->is_drm;
+			set_bit(ctx->num, &dev->hw_lock);
+			s5p_mfc_clock_on(dev);
+			s5p_mfc_close_inst(ctx);
 			if (s5p_mfc_wait_for_done_ctx(ctx,
-					S5P_FIMV_R2H_CMD_CLOSE_INSTANCE_RET)) {
-				mfc_err_ctx("It was once more expired. stop H/W\n");
-				s5p_mfc_check_and_stop_hw(dev);
+				S5P_FIMV_R2H_CMD_CLOSE_INSTANCE_RET)) {
+				mfc_err_ctx("Abnormal h/w state.\n");
+
+				/* cleanup for the next open */
+				if (dev->curr_ctx == ctx->num)
+					clear_bit(ctx->num, &dev->hw_lock);
+				if (ctx->is_drm)
+					dev->num_drm_inst--;
+				dev->num_inst--;
+
+				mfc_info_dev("Failed to release MFC inst[%d:%d]\n",
+						dev->num_drm_inst, dev->num_inst);
+
+				if (dev->num_inst == 0) {
+					s5p_mfc_deinit_hw(dev);
+					del_timer_sync(&dev->watchdog_timer);
+
+					flush_workqueue(dev->sched_wq);
+
+					s5p_mfc_clock_off(dev);
+					mfc_debug(2, "power off\n");
+					s5p_mfc_power_off(dev);
+
+					s5p_mfc_release_dev_context_buffer(dev);
+					dev->drm_fw_status = 0;
+
+#ifdef CONFIG_EXYNOS_CONTENT_PATH_PROTECTION
+					dev->is_support_smc = 0;
+					if (IS_MFCv10X(dev)) {
+						ret = exynos_smc(SMC_DRM_SECBUF_UNPROT,
+								dev->drm_fw_info.phys,
+								dev->fw_region_size,
+								ION_EXYNOS_HEAP_ID_VIDEO_FW);
+						if (ret != DRMDRV_OK) {
+							mfc_err_ctx("failed MFC DRM F/W unprot(%#x)\n",
+									ret);
+							goto err_release;
+						}
+					}
+#endif
+				} else {
+					s5p_mfc_clock_off(dev);
+				}
+
+
+				mutex_unlock(&dev->mfc_mutex);
+
+				return -EIO;
 			}
 		}
+
 		ctx->inst_no = MFC_NO_INSTANCE_SET;
 	}
 	/* hardware locking scheme */

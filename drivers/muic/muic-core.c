@@ -40,12 +40,6 @@
 static struct switch_dev switch_dock = {
 	.name = "dock",
 };
-
-#ifdef CONFIG_SEC_FACTORY
-struct switch_dev switch_attached_muic_cable = {
-	.name = "attached_muic_cable",	/* sys/class/switch/attached_muic_cable/state */
-};
-#endif
 #endif /* CONFIG_SWITCH */
 
 /* 1: 619K is used as a wake-up noti which sends a dock noti.
@@ -56,23 +50,13 @@ int muic_wakeup_noti = 1;
 #if defined(CONFIG_MUIC_NOTIFIER)
 static struct notifier_block dock_notifier_block;
 
-void muic_send_dock_intent(int type)
+static void muic_send_dock_intent(int type)
 {
 	pr_info("%s: MUIC dock type(%d)\n", __func__, type);
 #ifdef CONFIG_SWITCH
 	switch_set_state(&switch_dock, type);
 #endif
 }
-
-#ifdef CONFIG_SEC_FACTORY
-void muic_send_attached_muic_cable_intent(int type)
-{
-	pr_info("%s: MUIC attached_muic_cable type(%d)\n", __func__, type);
-#ifdef CONFIG_SWITCH
-	switch_set_state(&switch_attached_muic_cable, type);
-#endif
-}
-#endif
 
 static int muic_dock_attach_notify(int type, const char *name)
 {
@@ -114,7 +98,6 @@ static int muic_handle_dock_notification(struct notifier_block *nb,
 	int type = MUIC_DOCK_DETACHED;
 	const char *name;
 
-#if !defined(CONFIG_MUIC_UNIVERSAL_SM5705) && !defined(CONFIG_MUIC_UNIVERSAL_CCIC)
 	if (attached_dev == ATTACHED_DEV_JIG_UART_ON_MUIC) {
 		if (muic_wakeup_noti) {
 
@@ -131,14 +114,12 @@ static int muic_handle_dock_notification(struct notifier_block *nb,
 		pr_info("[muic] %s: ignore(%d)\n", __func__, attached_dev);
 		return NOTIFY_DONE;
 	}
-#endif
 
 	switch (attached_dev) {
 	case ATTACHED_DEV_DESKDOCK_MUIC:
 	case ATTACHED_DEV_DESKDOCK_VB_MUIC:
 #if defined(CONFIG_SEC_FACTORY)
 	case ATTACHED_DEV_JIG_UART_ON_MUIC:
-	case ATTACHED_DEV_JIG_UART_ON_VB_MUIC:
 #endif
 		if (action == MUIC_NOTIFY_CMD_ATTACH) {
 			type = MUIC_DOCK_DESKDOCK;
@@ -276,15 +257,6 @@ static void muic_init_switch_dev_cb(void)
 				__func__, ret);
 		return;
 	}
-
-#ifdef CONFIG_SEC_FACTORY
-	ret = switch_dev_register(&switch_attached_muic_cable);
-	if (ret < 0) {
-		pr_err("%s: Failed to register attached_muic_cable switch(%d)\n",
-				__func__, ret);
-		return;
-	}
-#endif
 #endif /* CONFIG_SWITCH */
 
 #if defined(CONFIG_MUIC_NOTIFIER)

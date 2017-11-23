@@ -127,13 +127,8 @@ name = "zinitix_isp" , addr 0x50*/
 #define FIRMWARE_ON_DELAY		150 /*ms*/
 #endif
 #else
-#ifdef CONFIG_TOUCHSCREEN_ZINITIX_BT541C
-#define CHIP_ON_DELAY			20 /*ms*/
-#define FIRMWARE_ON_DELAY		60 /*ms*/
-#else
 #define CHIP_ON_DELAY			40 /*ms*/
 #define FIRMWARE_ON_DELAY		40 /*ms*/
-#endif
 #endif
 
 #define DELAY_FOR_SIGNAL_DELAY		30 /*us*/
@@ -219,7 +214,6 @@ struct reg_ioctl {
 /* chip code */
 #define BT43X_CHIP_CODE		0xE200
 #define BT53X_CHIP_CODE		0xF400
-#define BT541C_CHIP_CODE	0xE240
 #define ZT7548_CHIP_CODE	0xE548
 #define ZT7538_CHIP_CODE	0xE538
 #define ZT7554_CHIP_CODE	0xE700
@@ -378,9 +372,6 @@ struct reg_ioctl {
 #define TSP_CMD_PARAM_NUM		8
 #ifdef CONFIG_TOUCHSCREEN_ZINITIX_ZT75XX
 #define TSP_CMD_X_NUM			18
-#define TSP_CMD_Y_NUM			30
-#elif defined(CONFIG_TOUCHSCREEN_ZINITIX_BT541C)
-#define TSP_CMD_X_NUM			19
 #define TSP_CMD_Y_NUM			30
 #else
 #define TSP_CMD_X_NUM			18
@@ -1265,8 +1256,6 @@ retry_power_sequence:
 	else if(chip_code == BT43X_CHIP_CODE)
 		info->cap_info.ic_fw_size = 24*1024;
 	else if(chip_code == BT53X_CHIP_CODE)
-		info->cap_info.ic_fw_size = 32*1024;
-	else if(chip_code == BT541C_CHIP_CODE)
 		info->cap_info.ic_fw_size = 32*1024;
 
 	if (write_cmd(client, 0xc004) != I2C_SUCCESS) {

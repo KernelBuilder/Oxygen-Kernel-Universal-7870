@@ -328,8 +328,6 @@ struct policy_data {
 	bool			plug_valid;
 	bool			modal_operation;
 	bool			abnormal_state;
-	bool			sink_cap_received;
-	bool			send_sink_cap;
 };
 
 struct protocol_data {
@@ -374,9 +372,6 @@ struct usbpd_manager_data {
 	int sink_min_volt;
 	int sink_max_power;
 
-	/* sink cap */
-	int sink_cap_max_volt;
-
 	/* power role swap*/
 	bool power_role_swap;
 	/* data role swap*/
@@ -399,8 +394,6 @@ struct usbpd_data {
 	struct policy_data	policy;
 	msg_header_type		source_msg_header;
 	data_obj_type           source_data_obj;
-	msg_header_type		sink_msg_header;
-	data_obj_type           sink_data_obj[2];
 	data_obj_type		source_request_obj;
 	struct usbpd_manager_data	manager;
 	struct work_struct	worker;

@@ -44,9 +44,7 @@ enum exynos_sensor_channel {
 
 enum exynos_sensor_position {
 	SENSOR_POSITION_REAR = 0,
-	SENSOR_POSITION_FRONT = 1,
-	SENSOR_POSITION_SECURE = 2,
-	SENSOR_POSITION_END
+	SENSOR_POSITION_FRONT
 };
 
 enum exynos_sensor_id {

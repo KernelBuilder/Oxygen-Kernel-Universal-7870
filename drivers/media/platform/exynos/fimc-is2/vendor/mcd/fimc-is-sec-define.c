@@ -2461,11 +2461,7 @@ crc_retry:
 		memcpy(finfo->cal_map_ver,
 		       &buf[OTP_HEADER_CAL_MAP_VER_START_ADDR_FRONT], FIMC_IS_CAL_MAP_VER_SIZE);
 		pr_info("FRONT OTPROM header version = %s\n", finfo->header_ver);
-#ifdef OTP_HEADER_MODULE_ID_ADDR_FRONT
-		memcpy(finfo->module_id, &buf[OTP_HEADER_MODULE_ID_ADDR_FRONT], FIMC_IS_MODULE_ID_SIZE);
-#else
-		memset(finfo->module_id, 0x0, FIMC_IS_MODULE_ID_SIZE);
-#endif
+
 #if defined(OTP_HEADER_PROJECT_NAME_START_ADDR_FRONT)
 		memcpy(finfo->project_name,
 		       &buf[OTP_HEADER_PROJECT_NAME_START_ADDR_FRONT], FIMC_IS_PROJECT_NAME_SIZE);
@@ -2515,11 +2511,7 @@ crc_retry:
 		finfo->header_ver[FIMC_IS_HEADER_VER_SIZE] = '\0';
 		/* HEARDER Data : Cal Map Version */
 		memcpy(finfo->cal_map_ver, &buf[OTP_HEADER_CAL_MAP_VER_START_ADDR], FIMC_IS_CAL_MAP_VER_SIZE);
-#ifdef OTP_HEADER_MODULE_ID_ADDR
-		memcpy(finfo->module_id, &buf[OTP_HEADER_MODULE_ID_ADDR], FIMC_IS_MODULE_ID_SIZE);
-#else
-		memset(finfo->module_id, 0x0, FIMC_IS_MODULE_ID_SIZE);
-#endif
+
 		memcpy(finfo->project_name, &buf[OTP_HEADER_PROJECT_NAME_START_ADDR], FIMC_IS_PROJECT_NAME_SIZE);
 		finfo->project_name[FIMC_IS_PROJECT_NAME_SIZE] = '\0';
 		finfo->header_section_crc_addr = OTP_CHECKSUM_HEADER_ADDR;

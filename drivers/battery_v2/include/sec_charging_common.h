@@ -49,7 +49,6 @@ enum power_supply_ext_property {
 	POWER_SUPPLY_EXT_PROP_FUELGAUGE_RESET,
 	POWER_SUPPLY_EXT_PROP_FACTORY_VOLTAGE_REGULATION,
 	POWER_SUPPLY_EXT_PROP_ANDIG_IVR_SWITCH,
-	POWER_SUPPLY_EXT_PROP_WATER_DETECT,
 };
 
 enum power_supply_ext_health {
@@ -180,6 +179,8 @@ enum sec_battery_adc_channel {
 	SEC_BAT_ADC_CHANNEL_VOLTAGE_NOW,
 	SEC_BAT_ADC_CHANNEL_CHG_TEMP,
 	SEC_BAT_ADC_CHANNEL_INBAT_VOLTAGE,
+	SEC_BAT_ADC_CHANNEL_DISCHARGING_CHECK,
+	SEC_BAT_ADC_CHANNEL_DISCHARGING_NTC,
 	SEC_BAT_ADC_CHANNEL_WPC_TEMP,
 	SEC_BAT_ADC_CHANNEL_SLAVE_CHG_TEMP,
 	SEC_BAT_ADC_CHANNEL_USB_TEMP,
@@ -249,6 +250,14 @@ enum sec_battery_full_charged {
 	SEC_BATTERY_FULLCHARGED_CHGINT,
 	/* charger power supply property, NO additional full condition */
 	SEC_BATTERY_FULLCHARGED_CHGPSY,
+};
+
+/* Self discharger type */
+enum sec_battery_discharger_type {
+	/* type ADC */
+	SEC_BAT_SELF_DISCHARGING_BY_ADC = 0,
+	/* type Fuel Gauge */
+	SEC_BAT_SELF_DISCHARGING_BY_FG,
 };
 
 /* BATT_INBAT_VOLTAGE */
@@ -625,6 +634,24 @@ struct sec_battery_platform_data {
 	unsigned int *step_charging_current;
 #endif
 
+	/* self discharging */
+	bool self_discharging_en;
+	unsigned int discharging_adc_max;
+	unsigned int discharging_adc_min;
+	unsigned int self_discharging_voltage_limit;
+	unsigned int discharging_ntc_limit;
+	int force_discharging_limit;
+	int force_discharging_recov;
+	int factory_discharging;
+	unsigned int self_discharging_type;
+#if defined(CONFIG_SW_SELF_DISCHARGING)
+	/* sw self discharging */
+	int self_discharging_temp_block;
+	int self_discharging_volt_block;
+	int self_discharging_temp_recov;
+	int self_discharging_temp_pollingtime;
+#endif
+
 	/* Monitor setting */
 	sec_battery_monitor_polling_t polling_type;
 	/* for initial check */
@@ -790,15 +817,15 @@ struct sec_battery_platform_data {
 	int wpc_det;
 	int wpc_en;
 
-	int thm_mux;
-
 	int chg_gpio_en;
 	int chg_irq;
 	unsigned long chg_irq_attr;
 	/* float voltage (mV) */
+#ifdef CONFIG_OF
 	unsigned int chg_float_voltage;
-	unsigned int chg_float_voltage_conv;
-
+#else
+	int chg_float_voltage;
+#endif
 #if defined(CONFIG_BATTERY_AGE_FORECAST)
 	int num_age_step;
 	int age_step;
@@ -837,15 +864,10 @@ struct sec_battery_platform_data {
 	unsigned int cisd_cap_low_thr;
 	unsigned int cisd_cap_limit;
 	unsigned int max_voltage_thr;
-	char *cisd_data_efs_path;
 #endif
 
 	/* ADC setting */
 	unsigned int adc_check_count;
-	unsigned int expired_time;
-	unsigned int recharging_expired_time;
-	int standard_curr;
-
 	/* ADC type for each channel */
 	unsigned int adc_type[];
 };

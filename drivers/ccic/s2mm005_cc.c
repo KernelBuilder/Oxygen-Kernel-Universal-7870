@@ -310,14 +310,6 @@ int dual_role_get_local_prop(struct dual_role_phy_instance *dual_role,
 
 	pr_info("%s : request prop = %d , attached_state = %d, power_role = %d\n",
 		__func__, prop, attached_state, power_role);
-	
-	if (prop == DUAL_ROLE_PROP_VCONN_SUPPLY) {
-		if (usbpd_data->vconn_en)
-			*val = DUAL_ROLE_PROP_VCONN_SUPPLY_YES;
-		else
-			*val = DUAL_ROLE_PROP_VCONN_SUPPLY_NO;
-		return 0;
-	}
 
 	if (attached_state == USB_STATUS_NOTIFY_ATTACH_DFP) {
 		if (prop == DUAL_ROLE_PROP_MODE)
@@ -527,13 +519,6 @@ void process_cc_attach(void * data,u8 *plug_attach_done)
 			set_enable_alternate_mode(ALTERNATE_MODE_START);
 #endif
 		}
-		
-		if(usbpd_data->pd_state == State_PE_SRC_Wait_New_Capabilities && Lp_DATA.BITS.Sleep_Cable_Detect)
-		{
-			s2mm005_manual_LPM(usbpd_data, 0x0C);	
-			return;
-		}
-		
 	}
 #ifdef CONFIG_USB_NOTIFY_PROC_LOG
 	store_usblog_notify(NOTIFY_FUNCSTATE, (void*)&usbpd_data->pd_state, NULL);
@@ -632,7 +617,7 @@ void process_cc_attach(void * data,u8 *plug_attach_done)
 			/* muic */
 			ccic_event_work(usbpd_data,
 					CCIC_NOTIFY_DEV_MUIC, CCIC_NOTIFY_ID_ATTACH,
-					1/*attach*/, 0/*rprd*/, Func_DATA.BITS.VBUS_CC_Short? Rp_Abnormal:Func_DATA.BITS.RP_CurrentLvl);
+					1/*attach*/, 0/*rprd*/, 0);
 			if (usbpd_data->is_client == CLIENT_OFF && usbpd_data->is_host == HOST_OFF) {
 				/* usb */
 				usbpd_data->is_client = CLIENT_ON;
@@ -769,18 +754,6 @@ void process_cc_get_int_status(void *data, uint32_t *pPRT_MSG, MSG_IRQ_STATUS_Ty
 	SSM_MSG_IRQ_State.DATA = pPRT_MSG[6];
 	AP_REQ_GET_State.DATA = pPRT_MSG[7];
 
-#if defined(CONFIG_SEC_FACTORY)
-	if((AP_REQ_GET_State.BYTES[0] >> 5) > 0) {
-		dev_info(&i2c->dev, "FAC: Repeat_State:%d, Repeat_RID:%d, RID0:%d\n",
-			AP_REQ_GET_State.BITS.FAC_Abnormal_Repeat_State,
-			AP_REQ_GET_State.BITS.FAC_Abnormal_Repeat_RID,
-			AP_REQ_GET_State.BITS.FAC_Abnormal_RID0);
-		ccic_event_work(usbpd_data,
-			CCIC_NOTIFY_DEV_CCIC, CCIC_NOTIFY_ID_FAC,
-			AP_REQ_GET_State.BYTES[0] >> 5, 0, 0); // b5~b7
-	}
-#endif
-
 	IrqPrint = 1;
 	for(cnt=0;cnt<32;cnt++)
 	{
@@ -800,8 +773,8 @@ void process_cc_get_int_status(void *data, uint32_t *pPRT_MSG, MSG_IRQ_STATUS_Ty
 			dev_info(&i2c->dev, "dr_swap is skiped, current status is dp mode !!\n");
 		}
 		else
-		{
 #endif
+		{
 			if (usbpd_data->is_host == HOST_ON_BY_RD) {
 				ccic_event_work(usbpd_data,
 						CCIC_NOTIFY_DEV_USB, CCIC_NOTIFY_ID_USB,
@@ -829,9 +802,7 @@ void process_cc_get_int_status(void *data, uint32_t *pPRT_MSG, MSG_IRQ_STATUS_Ty
 				usbpd_data->is_host = HOST_ON_BY_RD;
 				usbpd_data->is_client = CLIENT_OFF;
 			}
-#if defined(CONFIG_CCIC_ALTERNATE_MODE)
 		}
-#endif
 	}
 
 #if defined(CONFIG_CCIC_ALTERNATE_MODE)

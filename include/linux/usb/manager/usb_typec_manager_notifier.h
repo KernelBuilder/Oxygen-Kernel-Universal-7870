@@ -133,7 +133,6 @@ typedef struct _manager_data_t
 	bool usb_enable_state;
 	int pd_con_state;
 	int water_det;
-	int run_dry_support; /* if the CC IC driver has the run_dry_support variable, it should be added here as well  */
 	int is_UFPS;
 	void *pd;
 	int water_count;

@@ -152,8 +152,6 @@ static void WA_0_issue_at_init(struct s2mu004_fuelgauge_data *fuelgauge)
 	u8 v_40 = 0;
 	u8 temp_REG26 = 0, temp_REG27 = 0, temp = 0;
 
-	mutex_lock(&fuelgauge->fg_lock);
-
 	/* Step 1: [Surge test]  get UI voltage (0.1mV)*/
 	UI_volt = s2mu004_get_ocv(fuelgauge);
 
@@ -242,8 +240,6 @@ static void WA_0_issue_at_init(struct s2mu004_fuelgauge_data *fuelgauge)
 
 	/* restore monout avgvbat factor value */
 	s2mu004_write_reg_byte(fuelgauge->i2c, 0x40, v_40);
-
-	mutex_unlock(&fuelgauge->fg_lock);
 }
 
 static int s2mu004_get_soc_from_ocv(struct s2mu004_fuelgauge_data *fuelgauge, int target_ocv)
@@ -299,8 +295,6 @@ static void WA_0_issue_at_init1(struct s2mu004_fuelgauge_data *fuelgauge, int ta
 	int FG_volt, UI_volt, offset;
 	u8 v_40 = 0;
 	u8 temp_REG26 = 0, temp_REG27 = 0, temp = 0;
-
-	mutex_lock(&fuelgauge->fg_lock);
 
 	/* Step 1: [Surge test]  get UI voltage (0.1mV)*/
 	UI_volt = target_ocv * 10;
@@ -392,8 +386,6 @@ static void WA_0_issue_at_init1(struct s2mu004_fuelgauge_data *fuelgauge, int ta
 
 	/* restore monout avgvbat factor value */
 	s2mu004_write_reg_byte(fuelgauge->i2c, 0x40, v_40);
-
-	mutex_unlock(&fuelgauge->fg_lock);
 }
 
 
@@ -459,8 +451,6 @@ static void s2mu004_restart_gauging(struct s2mu004_fuelgauge_data *fuelgauge)
 	u8 v_40;
 	pr_err("%s: Re-calculate SOC and voltage\n", __func__);
 
-	mutex_lock(&fuelgauge->fg_lock);
-
 	s2mu004_read_reg(fuelgauge->i2c, S2MU004_REG_IRQ, data);
 	pr_info("%s: irq_reg data (%02x%02x)  \n",__func__, data[1], data[0]);
 
@@ -505,8 +495,6 @@ static void s2mu004_restart_gauging(struct s2mu004_fuelgauge_data *fuelgauge)
 	/* enable irq after reset */
 	s2mu004_write_reg(fuelgauge->i2c, S2MU004_REG_IRQ, r_data);
 	pr_info("%s: re-store irq_reg data (%02x%02x) \n",__func__, r_data[1], r_data[0]);
-
-	mutex_unlock(&fuelgauge->fg_lock);
 }
 
 static void s2mu004_init_regs(struct s2mu004_fuelgauge_data *fuelgauge)

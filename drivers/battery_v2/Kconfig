@@ -509,12 +509,6 @@ config EN_OOPS
 	help
 	  Say Y to enable oops filter
 
-config USE_POGO
-       bool "enable pogo charging"
-       default n
-       help
-	 Say Y to enable CONFIG_USE_POGO
-
 config STORE_MODE
        bool "enable store mode"
        default n
@@ -533,15 +527,9 @@ config XADC_SHARE_BATT_WITH_USB_THM
 	help
 	  Say Y to enable use xadc mux for BAT_THM with USB_THM
 
-config THM_MUX_SHARE
-	bool "To use xadc mux for BAT_THM with AP_THM"
+config NON_WATERPROOF_MODEL
+	bool "enable non_waterproof_model"
 	default n
 	help
-	  Say Y to enable use xadc mux for BAT_THM with AP_THM
-
-config TYPEB_WATERPROOF_MODEL
-	bool "enable typeb_waterproof_model"
-	default n
-	help
-	  Say Y here to enable typeb_waterproof_model
+	  Say Y here to enable non_waterproof_model
 

@@ -863,6 +863,10 @@ static int sec_chg_set_property(struct power_supply *psy,
 		/* val->intval : type */
 	case POWER_SUPPLY_PROP_ONLINE:
 		charger->cable_type = val->intval;
+		charger->input_current =
+			charger->pdata->charging_current[charger->cable_type].input_current_limit;
+		pr_info("[DEBUG]%s:[BATT] cable_type(%d), input_current(%d)mA\n",
+			__func__, charger->cable_type, charger->input_current);
 
 		if (charger->cable_type != POWER_SUPPLY_TYPE_OTG) {
 			if (charger->cable_type == POWER_SUPPLY_TYPE_BATTERY ||
@@ -880,10 +884,10 @@ static int sec_chg_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		{
 			int input_current = val->intval;
+			if (charger->input_current < input_current) {
+				input_current = charger->input_current;
+			}
 			s2mu005_set_input_current_limit(charger, input_current);
-			charger->input_current = input_current;
-			pr_info("[DEBUG]%s:[BATT] cable_type(%d), input_current(%d)mA\n",
-			__func__, charger->cable_type, charger->input_current);
 		}
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:

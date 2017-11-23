@@ -1543,6 +1543,7 @@ static int tc300k_crc_check(struct tc300k_data *data)
 {
 	struct i2c_client *client = data->client;
 	int ret;
+	u16 checksum;
 	u8 cmd;
 	u8 checksum_h, checksum_l;
 
@@ -1576,16 +1577,16 @@ static int tc300k_crc_check(struct tc300k_data *data)
 	}
 	checksum_l = ret;
 
-	data->checksum = (checksum_h << 8) | checksum_l;
+	checksum = (checksum_h << 8) | checksum_l;
 
-	if (data->fw_img->checksum != data->checksum) {
+	if (data->fw_img->checksum != checksum) {
 		dev_err(&client->dev,
 			"%s checksum fail - firm checksum(%d), compute checksum(%d)\n",
-			__func__, data->fw_img->checksum, data->checksum);
+			__func__, data->fw_img->checksum, checksum);
 		return -1;
 	}
 
-	dev_info(&client->dev, "[TK] %s success (%d)\n", __func__, data->checksum);
+	dev_info(&client->dev, "[TK] %s success (%d)\n", __func__, checksum);
 
 	return 0;
 }
@@ -2863,17 +2864,6 @@ static ssize_t touchkey_chip_name(struct device *dev,
 	return sprintf(buf, "TC305K\n");
 }
 
-static ssize_t touchkey_crc_check_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	struct tc300k_data *data = dev_get_drvdata(dev);
-	int ret;
-
-	ret = tc300k_crc_check(data);
-
-	return sprintf(buf, (ret == 0) ? "OK,%x\n" : "NG,%x\n", data->checksum);
-}
-
 static DEVICE_ATTR(touchkey_threshold, S_IRUGO, tc300k_threshold_show, NULL);
 static DEVICE_ATTR(brightness, S_IRUGO | S_IWUSR | S_IWGRP, NULL,
 		tc300k_led_control);
@@ -2958,7 +2948,6 @@ static DEVICE_ATTR(touchkey_grip_check, S_IRUGO, touchkey_grip_check_show, NULL)
 static DEVICE_ATTR(touchkey_sar_only_mode,  S_IWUSR | S_IWGRP, NULL, touchkey_mode_change);
 #endif
 static DEVICE_ATTR(touchkey_chip_name, S_IRUGO, touchkey_chip_name, NULL);
-static DEVICE_ATTR(touchkey_crc_check, S_IRUGO, touchkey_crc_check_show, NULL);
 
 static struct attribute *sec_touchkey_attributes[] = {
 	&dev_attr_touchkey_threshold.attr,
@@ -3009,7 +2998,6 @@ static struct attribute *sec_touchkey_attributes[] = {
 	&dev_attr_touchkey_sar_only_mode.attr,
 #endif
 	&dev_attr_touchkey_chip_name.attr,
-	&dev_attr_touchkey_crc_check.attr,
 	NULL,
 };
 
@@ -3081,7 +3069,6 @@ static struct attribute *sec_touchkey_attributes_350k[] = {
 	&dev_attr_touchkey_sar_only_mode.attr,
 #endif
 	&dev_attr_touchkey_chip_name.attr,
-	&dev_attr_touchkey_crc_check.attr,
 	NULL,
 };
 
@@ -3499,7 +3486,6 @@ static int __devinit tc300k_probe(struct i2c_client *client,
 
 err_request_irq:
 	input_unregister_device(input_dev);
-	input_dev = NULL;
 err_register_input_dev:
 err_fw_check:
 	mutex_destroy(&data->lock);
@@ -3527,6 +3513,7 @@ static int __devexit tc300k_remove(struct i2c_client *client)
 #endif
 	free_irq(client->irq, data);
 	input_unregister_device(data->input_dev);
+	input_free_device(data->input_dev);
 	mutex_destroy(&data->lock);
 	mutex_destroy(&data->lock_fac);
 	data->pdata->keyled(false);
@@ -3541,19 +3528,7 @@ static int __devexit tc300k_remove(struct i2c_client *client)
 
 static void tc300k_shutdown(struct i2c_client *client)
 {
-	struct tc300k_data *data = i2c_get_clientdata(client);
-
-#ifdef FEATURE_GRIP_FOR_SAR
-	device_init_wakeup(&client->dev, false);
-	wake_lock_destroy(&data->touchkey_wake_lock);
-#endif
-
-	disable_irq(client->irq);
-	data->enabled = false;
-	tc300k_release_all_fingers(data);
-	data->pdata->keyled(false);
-	data->pdata->power(false);
-	data->led_on = false;
+	tc300k_remove(client);
 }
 
 #if defined(CONFIG_PM)

@@ -25,17 +25,12 @@ static struct crypto_blkcipher *dek_aes_key_setup(kek_t *kek)
 {
 	struct crypto_blkcipher *tfm = NULL;
 
-	tfm = crypto_alloc_blkcipher("__cbc-aes-ce", 0, CRYPTO_ALG_ASYNC);
+	tfm = crypto_alloc_blkcipher("cbc(aes)", 0, CRYPTO_ALG_ASYNC);
 	if (!IS_ERR(tfm)) {
 		crypto_blkcipher_setkey(tfm, kek->buf, kek->len);
 	} else {
-		tfm = crypto_alloc_blkcipher("cbc(aes)", 0, CRYPTO_ALG_ASYNC);//Try one more
-		if (!IS_ERR(tfm)) {
-			crypto_blkcipher_setkey(tfm, kek->buf, kek->len);
-		} else {
-			printk("dek: failed to alloc blkcipher\n");
-			tfm = NULL;
-		}
+		printk("dek: failed to alloc blkcipher\n");
+		tfm = NULL;
 	}
 	return tfm;
 }

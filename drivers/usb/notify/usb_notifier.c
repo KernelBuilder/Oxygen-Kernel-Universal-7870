@@ -318,13 +318,6 @@ static int muic_usb_handle_notification(struct notifier_block *nb,
 		else
 			pr_err("%s - ACTION Error!\n", __func__);
 		break;
-	case ATTACHED_DEV_POGO_MUIC:
-		if (action == MUIC_NOTIFY_CMD_DETACH)
-			send_otg_notify(o_notify, NOTIFY_EVENT_POGO, 0);
-		else if (action == MUIC_NOTIFY_CMD_ATTACH)
-			send_otg_notify(o_notify, NOTIFY_EVENT_POGO, 1);
-		else
-			pr_err("%s - ACTION Error!\n", __func__);		
 	default:
 		break;
 	}
@@ -365,6 +358,12 @@ static int otg_accessory_power(bool enable)
 	union power_supply_propval val;
 	int on = !!enable;
 	int ret = 0;
+
+#if !defined(CONFIG_CCIC_NOTIFIER)
+	struct otg_notify *o_notify = get_otg_notify();
+	if (enable && o_notify)
+		o_notify->hw_param[USB_CCIC_OTG_USE_COUNT]++;
+#endif
 
 	pr_info("%s %d, enable=%d\n", __func__, __LINE__, enable);
 	psy_otg = get_power_supply_by_name("otg");

@@ -57,9 +57,6 @@
 #if defined(CONFIG_MUIC_UNIVERSAL_CCIC)
 #include "muic_ccic.h"
 #endif
-#if defined(CONFIG_USB_EXTERNAL_NOTIFY)
-#include "muic_usb.h"
-#endif
 
 #define MUIC_INT_DETACH_MASK	(0x1 << 1)
 #define MUIC_INT_ATTACH_MASK	(0x1 << 0)
@@ -195,24 +192,6 @@ static int muic_irq_handler_afc(muic_data_t *pmuic, int irq)
 	return INT_REQ_DONE;
 }
 #else
-
-#ifdef CONFIG_MUIC_POGO
-void muic_set_pogo_status(muic_data_t *pmuic, int status)
-{
-	
-	pr_info("%s:%s pogo_status=[%s]\n", MUIC_DEV_NAME, __func__,
-		status ? "abnormal" : "normal");
-
-	pmuic->muic_pogo_status = status;
-
-	if (status) {
-		muic_send_dock_intent(MUIC_DOCK_ABNORMAL);
-		muic_mux_sel_control(pmuic, NORMAL_USB_PATH);
-	}
-}
-
-#endif
-
 #if defined(CONFIG_VBUS_NOTIFIER)
 static void muic_handle_vbus(muic_data_t *pmuic)
 {
@@ -489,11 +468,7 @@ static int muic_probe(struct i2c_client *i2c,
 	pmuic->is_otg_test = false;
 	pmuic->attached_dev = ATTACHED_DEV_UNKNOWN_MUIC;
 	pmuic->is_usb_ready = false;
-	pmuic->is_dcdtmr_intr = false;
-	pmuic->is_rescanned = false;
-#ifdef CONFIG_MUIC_POGO
-	pmuic->muic_pogo_status = 0;
-#endif
+
 	if (!strcmp(pmuic->chip_name, "max,max77849"))
 		pmuic->vps_table = VPS_TYPE_TABLE;
 	else
@@ -591,10 +566,6 @@ static int muic_probe(struct i2c_client *i2c,
 		pr_info("%s: OPMODE_MUIC. CCIC is not used.\n", __func__);
 #endif
 
-#if defined(CONFIG_USB_EXTERNAL_NOTIFY)
-	muic_register_usb_notifier(pmuic);
-#endif
-
 	return 0;
 
 fail_init_irq:
@@ -630,9 +601,6 @@ static int muic_remove(struct i2c_client *i2c)
 		if (pmuic->pdata->cleanup_switch_dev_cb)
 			pmuic->pdata->cleanup_switch_dev_cb();
 
-#if defined(CONFIG_USB_EXTERNAL_NOTIFY)
-		muic_unregister_usb_notifier(pmuic);
-#endif
 		mutex_destroy(&pmuic->muic_mutex);
 		i2c_set_clientdata(pmuic->i2c, NULL);
 		kfree(pmuic);

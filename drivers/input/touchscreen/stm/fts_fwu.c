@@ -509,6 +509,8 @@ const int fts_fw_updater(struct fts_ts_info *info, unsigned char *fw_data, int r
 }
 EXPORT_SYMBOL(fts_fw_updater);
 
+#define FW_IMAGE_NAME_FTS8			"tsp_stm/fts8cd56_dream2.fw"
+
 int fts_fw_update_on_probe(struct fts_ts_info *info)
 {
 	int retval = 0;
@@ -523,8 +525,17 @@ int fts_fw_update_on_probe(struct fts_ts_info *info)
 		return 0;
 
 	if (info->board->firmware_name) {
-		info->firmware_name = info->board->firmware_name;
-	} else {
+		if (gpio_is_valid(info->board->device_id) && gpio_get_value(info->board->device_id)) {
+			retval = fts_read_analog_chip_id(info, ANALOG_ID_FTS8);
+			if (retval == 1)
+				info->firmware_name = FW_IMAGE_NAME_FTS8;
+			else
+				info->firmware_name = info->board->firmware_name;
+		}
+		else
+			info->firmware_name = info->board->firmware_name;
+	}
+	else {
 		input_err(true, info->dev,"%s: firmware name does not declair in dts\n", __func__);
 		goto exit_fwload;
 	}
@@ -569,8 +580,7 @@ int fts_fw_update_on_probe(struct fts_ts_info *info)
 #ifdef PAT_CONTROL
 	if ((info->fw_main_version_of_ic < info->fw_main_version_of_bin)
 		|| ((info->config_version_of_ic < info->config_version_of_bin))
-		|| ((info->fw_version_of_ic < info->fw_version_of_bin))
-		|| (info->boot_crc_check_fail == FTS_BOOT_CRC_FAIL))
+		|| ((info->fw_version_of_ic < info->fw_version_of_bin)))
 		retval = FTS_NEED_FW_UPDATE;
 	else
 		retval = FTS_NOT_ERROR;
@@ -624,8 +634,7 @@ int fts_fw_update_on_probe(struct fts_ts_info *info)
 #else
 	if ((info->fw_main_version_of_ic < info->fw_main_version_of_bin)
 		|| ((info->config_version_of_ic < info->config_version_of_bin))
-		|| ((info->fw_version_of_ic < info->fw_version_of_bin))
-		|| (info->boot_crc_check_fail == FTS_BOOT_CRC_FAIL))
+		|| ((info->fw_version_of_ic < info->fw_version_of_bin)))
 		retval = fts_fw_updater(info, fw_data, restore_cal);
 	else
 		retval = FTS_NOT_ERROR;

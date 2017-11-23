@@ -100,12 +100,6 @@ config TORCH_CURRENT_CHANGE_SUPPORT
         default n
         help
           Change torch current in recording mode.
-config SECURE_CAMERA_USE
-        bool "Use secure camera"
-        depends on VENDER_MCD
-        default n
-        help
-          Use secure camera.
 config CAMERA_JOSHUA
         bool "This camera is joshua project"
         depends on VENDER_MCD

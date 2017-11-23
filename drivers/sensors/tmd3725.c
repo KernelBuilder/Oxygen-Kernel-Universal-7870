@@ -58,9 +58,6 @@
 #define DEFAULT_ATIME                   0x11 /* 50.4 msec */
 #define DEFAULT_PRATE                   0x38 /* 5ms */
 #define DEFAULT_WTIME                   0x00 /* 2.8 msec */
-#ifdef CONFIG_SENSORS_TMD3725_RF_NOISE_DEFENCE_CODE
-#define DEFAULT_WTIME_FOR_PROX_ONLY     0x12 /* 53.2 msec */
-#endif
 #define DEFAULT_PPULSE                  0x96 /* ppulse_len: 16us, ppluse: 23 */
 #define DEFAULT_PGCFG1                  0x08 /* pagin 1x, pgldrive 54mA */
 #define DEFAULT_AGAIN                   0x02
@@ -666,21 +663,6 @@ static void tmd3725_prox_send_event(struct tmd3725_data *taos, int val)
 	SENSOR_INFO("prox value = %d\n", val);
 }
 
-#ifdef CONFIG_SENSORS_TMD3725_RF_NOISE_DEFENCE_CODE
-static void tmd3725_change_wtime(struct tmd3725_data *taos, int val)
-{
-	int ret;
-
-	taos->wtime = val;
-
-	ret = tmd3725_i2c_write_data(taos, WAIT_TIME, taos->wtime);
-	if (ret < 0)
-		SENSOR_ERR("failed to write als wait time reg %d\n", ret);
-	else
-		SENSOR_INFO("change wait time reg %d\n", taos->wtime);
-}
-#endif
-
 static void tmd3725_prox_process_state(struct tmd3725_data *taos)
 {
 	int adc_data;
@@ -932,17 +914,11 @@ static ssize_t tmd3725_light_enable_store(struct device *dev,
 	mutex_lock(&taos->enable_lock);
 	if (new_value && !(taos->power_state & LIGHT_ENABLED)) {
 		taos->power_state |= LIGHT_ENABLED;
-#ifdef CONFIG_SENSORS_TMD3725_RF_NOISE_DEFENCE_CODE
-		tmd3725_change_wtime(taos, DEFAULT_WTIME);
-#endif
 		tmd3725_set_op_mode(taos, MODE_ALS, ON);
 		tmd3725_light_enable(taos);
 	} else if (!new_value && (taos->power_state & LIGHT_ENABLED)) {
 		tmd3725_light_disable(taos);
 		tmd3725_set_op_mode(taos, MODE_ALS, OFF);
-#ifdef CONFIG_SENSORS_TMD3725_RF_NOISE_DEFENCE_CODE
-		tmd3725_change_wtime(taos, DEFAULT_WTIME_FOR_PROX_ONLY);
-#endif
 		taos->power_state &= ~LIGHT_ENABLED;
 	}
 	mutex_unlock(&taos->enable_lock);
@@ -1459,6 +1435,13 @@ static int tmd3725_parse_dt(struct tmd3725_data *taos, struct device *dev)
 	SENSOR_INFO("th_still_det_hi:%d, th_rel_low:%d\n",
 		taos->prox_thd_still_det_hi, taos->prox_thd_rel_low);
 
+	if (of_property_read_u32(np, "taos,ppulse", &taos->ppulse) < 0)
+		taos->ppulse = DEFAULT_PPULSE;
+	if (of_property_read_u32(np, "taos,pgcfg1", &taos->pgcfg1) < 0)
+		taos->pgcfg1 = DEFAULT_PGCFG1;
+	SENSOR_INFO("taos,ppulse:%x, taos,pgcfg1:%x\n",
+		taos->ppulse, taos->pgcfg1);
+
 	if (of_property_read_u32(np, "taos,coef_r", &taos->coef_r) < 0)
 		taos->coef_r = DEFAULT_COEF_R;
 	if (of_property_read_u32(np, "taos,coef_g", &taos->coef_g) < 0)
@@ -1480,15 +1463,9 @@ static int tmd3725_parse_dt(struct tmd3725_data *taos, struct device *dev)
 	if (of_property_read_u32(np, "taos,lux_mul", &taos->lux_mul) < 0)
 		taos->lux_mul = DEFAULT_LUX_MULTIPLE;
 
-	taos->ppulse = DEFAULT_PPULSE;
-	taos->pgcfg1 = DEFAULT_PGCFG1;
 	taos->als_time = DEFAULT_ATIME;
 	taos->prate = DEFAULT_PRATE;
-#ifdef CONFIG_SENSORS_TMD3725_RF_NOISE_DEFENCE_CODE
-	taos->wtime = DEFAULT_WTIME_FOR_PROX_ONLY;
-#else
 	taos->wtime = DEFAULT_WTIME;
-#endif
 	taos->als_gain = DEFAULT_AGAIN;
 
 	return 0;

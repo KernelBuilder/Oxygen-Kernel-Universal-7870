@@ -2306,13 +2306,8 @@ static int sm5705_fg_set_property(struct power_supply *psy,
 		fuelgauge->initial_update_of_soc = true;
 		break;
 	case POWER_SUPPLY_PROP_ENERGY_NOW:
-          {
-                union power_supply_propval value;
-                value.intval = 0;
 		sm5705_fg_reset_capacity_by_jig_connection(fuelgauge);
-                psy_do_property("sm5705-charger", set, POWER_SUPPLY_PROP_PRESENT, value);
 		break;
-          }
 	default:
 		return -EINVAL;
 	}

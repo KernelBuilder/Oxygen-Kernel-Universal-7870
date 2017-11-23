@@ -382,7 +382,7 @@ static ssize_t sec_tsp_log_write(struct file *file,
 	if (sscanf(page, "%u", &new_value) != 1) {
 		pr_info("%s\n", page);
 		/* print tsp_log to sec_tsp_log_buf */
-		sec_debug_tsp_log("%s", page);
+		sec_debug_tsp_log(page);
 	}
 	ret = count;
 out:

@@ -33,8 +33,8 @@
 #define SX9306_CPS_CTRL6_REG    0x0C
 #define SX9306_CPS_CTRL7_REG    0x0D
 #define SX9306_CPS_CTRL8_REG    0x0E
-#define SX9306_SAR_CTRL0_REG    0x0F
-#define SX9306_SAR_CTRL1_REG    0x10
+#define SX9306_CPS_CTRL9_REG    0x0F
+#define SX9306_CPS_CTRL10_REG   0x10
 #define SX9306_SOFTRESET_REG    0x7F
 
 /* Sensor Readback */
@@ -126,11 +126,11 @@ static struct smtc_reg_data setup_reg[] = {
 		.val = 0x00,
 	},
 	{
-		.reg = SX9306_SAR_CTRL0_REG,
+		.reg = SX9306_CPS_CTRL9_REG,
 		.val = 0xC0,
 	},
 	{
-		.reg = SX9306_SAR_CTRL1_REG,
+		.reg = SX9306_CPS_CTRL10_REG,
 		.val = 0xAA,
 	},
 };

@@ -443,21 +443,12 @@ static void kbase_fence_debug_wait_timeout(struct kbase_jd_atom *katom)
 {
 	struct kbase_context *kctx = katom->kctx;
 	struct device *dev = katom->kctx->kbdev->dev;
-	struct sync_fence *fence;
+	struct sync_fence *fence = katom->fence;
 	int timeout_ms = atomic_read(&kctx->kbdev->js_data.soft_job_timeout_ms);
-	int status;
+	int status = kbase_fence_get_status(fence);
 	unsigned long lflags;
 
 	spin_lock_irqsave(&kctx->waiting_soft_jobs_lock, lflags);
-
-	fence = katom->fence;
-	if (!fence) {
-		/* Fence must have signaled just after timeout. */
-		spin_unlock_irqrestore(&kctx->waiting_soft_jobs_lock, lflags);
-		return;
-	}
-
-	status = kbase_fence_get_status(fence);
 
 	dev_warn(dev, "ctx %d_%d: Atom %d still waiting for fence [%p] after %dms\n",
 		 kctx->tgid, kctx->id,
@@ -853,11 +844,12 @@ out_unlock:
 	kbase_gpu_vm_unlock(katom->kctx);
 
 out_cleanup:
+	kfree(buffers);
+	kfree(user_buffers);
+
 	/* Frees allocated memory for kbase_debug_copy_job struct, including
 	 * members, and sets jc to 0 */
 	kbase_debug_copy_finish(katom);
-        kfree(user_buffers);
-
 	return ret;
 }
 

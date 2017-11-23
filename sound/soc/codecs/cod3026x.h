@@ -103,7 +103,6 @@ struct cod3026x_priv {
 	int mic_adc_range;
 	int mic_det_delay;
 	int btn_release_value;
-	int btn_press_delay;
 	int water_threshold_adc_min1;
 	int water_threshold_adc_min2;
 	struct jack_buttons_zone jack_buttons_zones[4];

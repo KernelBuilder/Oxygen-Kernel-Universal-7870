@@ -28,8 +28,6 @@ static void __iomem *exynos_chipid_base;
 struct exynos_chipid_info exynos_soc_info;
 EXPORT_SYMBOL(exynos_soc_info);
 
-static const char *soc_ap_id;
-	
 static const char * __init product_id_to_name(unsigned int product_id)
 {
 	const char *soc_name;
@@ -145,7 +143,7 @@ static int __init exynos_chipid_probe(struct platform_device *pdev)
 		goto free_soc;
 
 	soc_dev_attr->soc_id = product_id_to_name(exynos_soc_info.product_id);
-	soc_ap_id = product_id_to_name(exynos_soc_info.product_id);
+
 	soc_dev = soc_device_register(soc_dev_attr);
 	if (IS_ERR(soc_dev))
 		goto free_rev;
@@ -193,13 +191,6 @@ static ssize_t chipid_product_id_show(struct kobject *kobj,
 	return snprintf(buf, 10, "%08X\n", exynos_soc_info.product_id);
 }
 
-/* [BigData] For display of HRM Apk */
-static ssize_t chipid_ap_id_show(struct kobject *kobj,
-			         struct kobj_attribute *attr, char *buf)
-{
-	return snprintf(buf, 30, "%s EVT%d.%d\n", soc_ap_id, exynos_soc_info.revision>>4, exynos_soc_info.revision%16);
-}
-
 static ssize_t chipid_lot_id_show(struct kobject *kobj,
 			         struct kobj_attribute *attr, char *buf)
 {
@@ -221,9 +212,6 @@ static ssize_t chipid_evt_ver_show(struct kobject *kobj,
 static struct kobj_attribute chipid_product_id_attr =
         __ATTR(product_id, 0644, chipid_product_id_show, NULL);
 
-static struct kobj_attribute chipid_ap_id_attr =
-        __ATTR(ap_id, 0644, chipid_ap_id_show, NULL);
-
 static struct kobj_attribute chipid_lot_id_attr =
         __ATTR(lot_id, 0644, chipid_lot_id_show, NULL);
 
@@ -235,7 +223,6 @@ static struct kobj_attribute chipid_evt_ver_attr =
 
 static struct attribute *chipid_sysfs_attrs[] = {
 	&chipid_product_id_attr.attr,
-	&chipid_ap_id_attr.attr,
 	&chipid_lot_id_attr.attr,
 	&chipid_revision_attr.attr,
 	&chipid_evt_ver_attr.attr,

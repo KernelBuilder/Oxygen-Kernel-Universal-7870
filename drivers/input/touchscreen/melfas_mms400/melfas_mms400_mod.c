@@ -139,7 +139,7 @@ void mms_input_event_handler(struct mms_ts_info *info, u8 sz, u8 *buf)
 	tsp_debug_dbg(false, &client->dev, "%s [START]\n", __func__);
 	tsp_debug_dbg(false, &client->dev, "%s - sz[%d] buf[0x%02X]\n", __func__, sz, buf[0]);
 
-	for (i = 0; i < sz; i += info->event_size) {
+	for (i = 1; i < sz; i += info->event_size) {
 		u8 *tmp = &buf[i];
 
 		int id = (tmp[0] & MIP_EVENT_INPUT_ID) - 1;

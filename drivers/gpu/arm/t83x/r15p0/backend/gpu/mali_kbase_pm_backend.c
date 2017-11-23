@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2010-2017 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2016 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -393,11 +393,6 @@ void kbase_pm_set_debug_core_mask(struct kbase_device *kbdev,
 void kbase_hwaccess_pm_gpu_active(struct kbase_device *kbdev)
 {
 	kbase_pm_update_active(kbdev);
-}
-
-void kbase_hwaccess_pm_gpu_keep_active_nolock(struct kbase_device *kbdev)
-{
-	kbase_pm_keep_active_nolock(kbdev);
 }
 
 void kbase_hwaccess_pm_gpu_idle(struct kbase_device *kbdev)

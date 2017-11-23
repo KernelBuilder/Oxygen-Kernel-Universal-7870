@@ -1408,6 +1408,46 @@ static int dw_mci_exynos_request_ext_irq(struct dw_mci *host,
 	struct dw_mci_exynos_priv_data *priv = host->priv;
 	int ext_cd_irq = 0;
 
+	if ((priv->sec_sd_slot_type) >= 0) {
+		if (!sd_detection_cmd_dev) {
+			sd_detection_cmd_dev = sec_device_create(host, "sdcard");
+			if (IS_ERR(sd_detection_cmd_dev))
+				pr_err("Fail to create sysfs dev\n");
+			if (device_create_file(sd_detection_cmd_dev,
+						&dev_attr_status) < 0)
+				pr_err("Fail to create status sysfs file\n");
+
+			if (device_create_file(sd_detection_cmd_dev,
+						&dev_attr_cd_cnt) < 0)
+				pr_err("Fail to create cd_cnt sysfs file\n");
+
+			if (device_create_file(sd_detection_cmd_dev,
+						&dev_attr_max_mode) < 0)
+				pr_err("Fail to create max_mode sysfs file\n");
+
+			if (device_create_file(sd_detection_cmd_dev,
+						&dev_attr_current_mode) < 0)
+				pr_err("Fail to create current_mode sysfs file\n");
+		}
+
+		if (!sd_info_cmd_dev) {
+			sd_info_cmd_dev = sec_device_create(host, "sdinfo");
+			if (IS_ERR(sd_info_cmd_dev))
+				pr_err("Fail to create sysfs dev\n");
+			if (device_create_file(sd_info_cmd_dev,
+						&dev_attr_sd_count) < 0)
+				pr_err("Fail to create status sysfs file\n");
+		}
+		if (!sd_data_cmd_dev) {
+			sd_data_cmd_dev = sec_device_create(host, "sddata");
+			if (IS_ERR(sd_data_cmd_dev))
+				pr_err("Fail to create sysfs dev\n");
+			if (device_create_file(sd_data_cmd_dev,
+						&dev_attr_sd_data) < 0)
+				pr_err("Fail to create status sysfs file\n");
+		}
+	}
+
 	if (gpio_is_valid(priv->cd_gpio) &&
 			!gpio_request(priv->cd_gpio, "DWMCI_EXT_CD")) {
 		ext_cd_irq = gpio_to_irq(priv->cd_gpio);
@@ -1462,51 +1502,6 @@ static void dw_mci_exynos_set_etc_gpio(struct dw_mci *host)
 	return;
 }
 
-static void dw_mci_exynos_add_sysfs(struct dw_mci *host)
-{
-	struct dw_mci_exynos_priv_data *priv = host->priv;
-
-	if ((priv->sec_sd_slot_type) >= 0) {
-		if (!sd_detection_cmd_dev) {
-			sd_detection_cmd_dev = sec_device_create(host, "sdcard");
-			if (IS_ERR(sd_detection_cmd_dev))
-				pr_err("Fail to create sysfs dev\n");
-			if (device_create_file(sd_detection_cmd_dev,
-						&dev_attr_status) < 0)
-				pr_err("Fail to create status sysfs file\n");
-
-			if (device_create_file(sd_detection_cmd_dev,
-						&dev_attr_cd_cnt) < 0)
-				pr_err("Fail to create cd_cnt sysfs file\n");
-
-			if (device_create_file(sd_detection_cmd_dev,
-						&dev_attr_max_mode) < 0)
-				pr_err("Fail to create max_mode sysfs file\n");
-
-			if (device_create_file(sd_detection_cmd_dev,
-						&dev_attr_current_mode) < 0)
-				pr_err("Fail to create current_mode sysfs file\n");
-		}
-
-		if (!sd_info_cmd_dev) {
-			sd_info_cmd_dev = sec_device_create(host, "sdinfo");
-			if (IS_ERR(sd_info_cmd_dev))
-				pr_err("Fail to create sysfs dev\n");
-			if (device_create_file(sd_info_cmd_dev,
-						&dev_attr_sd_count) < 0)
-				pr_err("Fail to create status sysfs file\n");
-		}
-		if (!sd_data_cmd_dev) {
-			sd_data_cmd_dev = sec_device_create(host, "sddata");
-			if (IS_ERR(sd_data_cmd_dev))
-				pr_err("Fail to create sysfs dev\n");
-			if (device_create_file(sd_data_cmd_dev,
-						&dev_attr_sd_data) < 0)
-				pr_err("Fail to create status sysfs file\n");
-		}
-	}
-}
-
 static int dw_mci_exynos_misc_control(struct dw_mci *host,
 		enum dw_mci_misc_control control, void *priv)
 {
@@ -1525,9 +1520,6 @@ static int dw_mci_exynos_misc_control(struct dw_mci *host,
 			break;
 		case CTRL_SET_ETC_GPIO:
 			dw_mci_exynos_set_etc_gpio(host);
-			break;
-		case CTRL_ADD_SYSFS:
-			dw_mci_exynos_add_sysfs(host);
 			break;
 		default:
 			dev_err(host->dev, "dw_mmc exynos: wrong case\n");
