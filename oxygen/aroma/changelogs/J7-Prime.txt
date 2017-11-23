@@ -1,0 +1,33 @@
+<b>V2.1</b>
+-Linux 3.18.83
+-Updated OKM
+-Added Boeffla WakeLock Blocker Driver (Use OKM to control WakeLocks)
+-ThunderPlug HotPlug Driver (Only for advanced users)
+-Update BFQ-v8r12
+-Lowmemmory killer optimise a little bit
+-Improve 3x faster integer sqrt
+-Updated Spectrum Profiles
+
+<b>V2.0</b>
+-Merged with the latest 3.18.78 upsream kernel!!!
+-Disable CRCs (30% Performance boost!!)
+-Allow toggle CRCs through OKM
+-Enabled support for ARCH_POWER
+-Some ramdisk tweaks
+-Updated toolchain
+-Update Blu_active Governor
+-Enabled "Optimise for performance instead of size"
+-Updated Spectrum Profiles
+-Speed up reading /proc/vmstat by 30%
+-Deadline IO scheduler optimisations
+-Reduce time to sleep
+-Disabled Logging
+-LZ4 Optimisations
+
+<b>V1.1</b>
+-Fixed Spectrum
+-Fixed Aroma Advanced Settings failing to set
+-Enabled front flash on G610M & other supported variants
+
+<b>V1.0</b>
+-Initial Release

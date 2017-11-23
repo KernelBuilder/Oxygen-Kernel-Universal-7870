@@ -192,6 +192,7 @@ build_zip()
 
 	# Append Version Info
 	cp -r $BUILD_DIR/aroma/META-INF $ZIP_DIR/META-INF
+	cp $BUILD_DIR/aroma/changelogs/$DEVICE.txt $ZIP_DIR/META-INF/com/google/android/aroma/changelog.txt
 	sed -i "s;###DATE###;$DATE;" $ZIP_DIR/META-INF/com/google/android/aroma-config;
 	sed -i "s;###DEVICE###;$DEVICE;" $ZIP_DIR/META-INF/com/google/android/aroma-config;
 	sed -i "s;###VERSION###;$KERNEL_VERSION;" $ZIP_DIR/META-INF/com/google/android/aroma-config;

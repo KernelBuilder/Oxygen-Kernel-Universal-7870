@@ -1,0 +1,12 @@
+<b>V1.1</b>
+-Linux 3.18.83
+-Updated OKM
+-Added Boeffla WakeLock Blocker Driver (Use OKM to control WakeLocks)
+-ThunderPlug HotPlug Driver (Only for advanced users)
+-Update BFQ-v8r12
+-Lowmemmory killer optimise a little bit
+-Improve 3x faster integer sqrt
+-Updated Spectrum Profiles
+
+<b>V1.0</b>
+-Initial Build
