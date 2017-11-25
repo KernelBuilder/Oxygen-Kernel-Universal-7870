@@ -30,8 +30,8 @@ $BB mount -o remount,rw /data;
 $BB mount -o remount,rw /;
 
 # Set KNOX to 0x0 on running /system
-/sbin/resetprop -v -n ro.boot.warranty_bit "0"
-/sbin/resetprop -v -n ro.warranty_bit "0"
+/sbin/resetprop -n ro.boot.warranty_bit "0"
+/sbin/resetprop -n ro.warranty_bit "0"
 
 # Fix Safetynet flags
 /sbin/resetprop -n ro.boot.veritymode "enforcing"
@@ -44,21 +44,41 @@ $BB mount -o remount,rw /;
 /sbin/resetprop -n ro.boot.fmp_config "1"
 /sbin/resetprop -n sys.oem_unlock_allowed "0"
 
+# OKM: Make internal storage directory
+OKM_PATH=/data/.okm
+if [ ! -d $OKM_PATH ]; then
+	$BB mkdir $OKM_PATH;
+fi;
+$BB chmod 0777 $OKM_PATH;
+$BB chown 0.0 $OKM_PATH;
+
+# OKM: Delete backup directory
+$BB rm -rf $OKM_PATH/bk;
+
+# OKM: Make backup directory.
+$BB mkdir $OKM_PATH/bk;
+$BB chmod 0777 $OKM_PATH/bk;
+$BB chown 0.0 $OKM_PATH/bk;
+
+# OKM: Save original voltages
+$BB cat /sys/devices/14ac0000.mali/volt_table > $OKM_PATH/bk/gpu_stock_voltage
+$BB chmod -R 755 $OKM_PATH/bk/*;
+
 # Deep Sleep fix by @Chainfire (from SuperSU)
 for i in `ls /sys/class/scsi_disk/`; do
-	cat /sys/class/scsi_disk/$i/write_protect 2>/dev/null | grep 1 >/dev/null
-	if [ $? -eq 0 ]; then
-		echo 'temporary none' > /sys/class/scsi_disk/$i/cache_type
-	fi
+cat /sys/class/scsi_disk/$i/write_protect 2>/dev/null | grep 1 >/dev/null
+if [ $? -eq 0 ]; then
+echo 'temporary none' > /sys/class/scsi_disk/$i/cache_type
+fi
 done
 
 # SELinux Permissive / Enforcing Patch
 # 0 = Permissive, 1 = Enforcing
-chmod 777 /sys/fs/selinux/enforce
+$BB chmod 777 /sys/fs/selinux/enforce
 echo "0" > /sys/fs/selinux/enforce
-chmod 644 /sys/fs/selinux/enforce
+$BB chmod 640 /sys/fs/selinux/enforce
 
-# Stock CPU / GPU Settings
+# Stock Settings
 echo interactive > /sys/devices/system/cpu/cpu4/cpufreq/scaling_governor
 echo interactive > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
 echo 1586000 > /sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq
@@ -71,24 +91,11 @@ echo cfq > /sys/block/sda/queue/scheduler
 echo cfq > /sys/block/mmcblk0/queue/scheduler
 echo bic > /proc/sys/net/ipv4/tcp_congestion_control
 
-# Tweaks: Internet Speed (@Morogoku)
-echo "0" > /proc/sys/net/ipv4/tcp_timestamps;
-echo "1" > /proc/sys/net/ipv4/tcp_tw_reuse;
-echo "1" > /proc/sys/net/ipv4/tcp_sack;
-echo "1" > /proc/sys/net/ipv4/tcp_tw_recycle;8
-echo "1" > /proc/sys/net/ipv4/tcp_window_scaling;
-echo "5" > /proc/sys/net/ipv4/tcp_keepalive_probes;
-echo "30" > /proc/sys/net/ipv4/tcp_keepalive_intvl;
-echo "30" > /proc/sys/net/ipv4/tcp_fin_timeout;
-echo "404480" > /proc/sys/net/core/wmem_max;
-echo "404480" > /proc/sys/net/core/rmem_max;
-echo "256960" > /proc/sys/net/core/rmem_default;
-echo "256960" > /proc/sys/net/core/wmem_default;
-echo "4096,16384,404480" > /proc/sys/net/ipv4/tcp_wmem;
-echo "4096,87380,404480" > /proc/sys/net/ipv4/tcp_rmem;
+# Customisations
+
 
 # Unmount
-$BB mount -t rootfs -o remount,ro rootfs;
+$BB mount -t rootfs -o remount,rw rootfs;
 $BB mount -o remount,ro /system;
 $BB mount -o remount,rw /data;
 $BB mount -o remount,ro /;

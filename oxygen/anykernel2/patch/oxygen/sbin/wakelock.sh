@@ -18,7 +18,6 @@ mount -o remount,rw -t auto /
 mount -t rootfs -o remount,rw rootfs
 mount -o remount,rw -t auto /system
 mount -o remount,rw /data
-mount -o remount,rw /cache
 
 # Google play services wakelock fix
 sleep 1
@@ -33,9 +32,7 @@ su -c "pm enable com.google.android.gsf/.update.SystemUpdateService"
 su -c "pm enable com.google.android.gsf/.update.SystemUpdateService$Receiver"
 su -c "pm enable com.google.android.gsf/.update.SystemUpdateService$SecretCodeReceiver"
 
-
 mount -o remount,ro -t auto /
 mount -t rootfs -o remount,ro rootfs
 mount -o remount,ro -t auto /system
 mount -o remount,rw /data
-mount -o remount,rw /cache

@@ -13,21 +13,11 @@
 # limitations under the License.
 #
 
-# Busybox
-if [ -e /su/xbin/busybox ]; then
-	BB=/su/xbin/busybox;
-else if [ -e /sbin/busybox ]; then
-	BB=/sbin/busybox;
-else
-	BB=/system/xbin/busybox;
-fi;
-fi;
-
 # Mount
-$BB mount -t rootfs -o remount,rw rootfs;
-$BB mount -o remount,rw /system;
-$BB mount -o remount,rw /data;
-$BB mount -o remount,rw /;
+mount -t rootfs -o remount,rw rootfs;
+mount -o remount,rw /system;
+mount -o remount,rw /data;
+mount -o remount,rw /;
 
 # Create init.d folder if not exist
 if [ ! -d /system/etc/init.d ]; then

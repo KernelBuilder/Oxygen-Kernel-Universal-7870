@@ -1,11 +1,20 @@
-# OXYGEN KERNEL AROMA INSTALLER
-# Created by @djb77
-# Modified  By @Siddhant Naik 
-# Do Not Use Without My Permission!!
+# -------------------------------
+# OXYGEN KERNEL AROMA INSTALLER v1.0
+# aroma-config portion
+#
+# Created by djb77 from XDA 
+# DO NOT USE ANY PORTION OF THIS
+# CODE WITHOUT HIS PERMISSION!!
+#
+# Modified by Siddhant Naik to support Oxygen Kernel
+# -------------------------------
 
+ui_print("@Setting up");
 set_progress(0.0);
 
-ui_print("Mounting Partitions");
+# MOUNT PARTITIONS
+# ----------------
+ui_print("- Mounting Partitions");
 if is_mounted("/system") == "/system" then
     assert(run_program("/sbin/busybox", "umount", "/system"));
 endif;
@@ -15,14 +24,43 @@ endif;
 run_program("/sbin/mount", "/system");
 run_program("/sbin/mount", "/data");
 
-# Install Kernel
+# BACKUP CONFIG
+# -------------
+if file_getprop("/tmp/aroma/oxygenkernel-backup.prop","install") == "1"
+then
+	ui_print("- Backing up Config");
+	run_program("/tmp/aroma/backup.sh");
+endif;
+
+# RESTORE CONFIG
+# --------------
+if file_getprop("/tmp/aroma/oxygenkernel-restore.prop","install") == "1"
+then
+	ui_print("- Restoring Config");
+	run_program("/tmp/aroma/restore.sh");
+endif;
+
+# WIPE MAGISK / SUPERSU
+# ---------------------
+if file_getprop("/tmp/aroma/wipe.prop","install") == "1"
+then
+	ui_print("- Clearing old Magisk / SuperSU Installs");
+	run_program("/tmp/aroma/wipe.sh");
+endif;
+
+set_progress(0.10);
+
+# FLASH KERNEL
+# ------------
 ui_print(" ");
-ui_print("Installing Kernel");
+ui_print("@Flashing OxygenKernel");
 package_extract_file("boot.img", "/dev/block/platform/13540000.dwmmc0/by-name/BOOT");
 
 set_progress(0.35);
 
-ui_print("Fixing Stuff");
+# INSTALL SYSTEM PATCHES
+# ----------------------
+ui_print("@Patching System");
 delete("/system/app/mcRegistry/ffffffffd0000000000000000000000a.tlbin");
 delete("/system/vendor/lib/libsecure_storage.so");
 package_extract_dir("oxygenkernel/system", "/system");
@@ -31,29 +69,31 @@ ui_print(" ");
 
 set_progress(0.40);
 
-# Install OKM
-delete_recursive("/system/app/com.siddhant.okm*");
-delete_recursive("/system/priv-app/com.siddhant.okm*");
-delete_recursive("/data/app/com.siddhant.okm*");
-delete_recursive("/data/data/com.siddhant.okm*");
+# INSTALL OKM
+# ---------------
 if file_getprop("/tmp/aroma/okm.prop","install") == "1"
 then
-	ui_print("Installing Oxygen Kernel Manager");
+	ui_print("@Installing Oxygen Kernel Manager App");
+	delete_recursive("/system/app/com.siddhant.okm*");
+	delete_recursive("/system/priv-app/com.siddhant.okm*");
+	delete_recursive("/data/app/com.siddhant.okm*");
+	delete_recursive("/data/data/com.siddhant.okm*");
 	package_extract_dir("oxygenkernel/apps/com.siddhant.okm-2", "/data/app/com.siddhant.okm-2");
 endif;
 
 set_progress(0.45);
 
-# INSTALL SPECTRUM
+# INSTALL SPECTRUM FILES
+# ----------------------
 if file_getprop("/tmp/aroma/spectrum.prop","install") == "1"
 then
 	ui_print("@Installing Spectrum Profiles");
 	package_extract_dir("oxygenkernel/spectrum", "/data/media/0/Spectrum");
 	set_perm_recursive(0, 0, 0777, 0777, "/data/media/0/Spectrum");
-	delete_recursive("/data/app/org.frap129.spectrum-*");
 	if file_getprop("/tmp/aroma/okm.prop","install") == "0"
 	then
 		ui_print("@Installing Spectrum Control App");
+		delete_recursive("/data/app/org.frap129.spectrum-*");
 		package_extract_dir("oxygenkernel/apps/org.frap129.spectrum-1", "/data/app/org.frap129.spectrum-1");
 	endif;
 endif;
@@ -61,6 +101,7 @@ endif;
 set_progress(0.49);
 
 # PERMISSIONS
+# -----------
 ui_print(" ");
 ui_print("@Setting System Permissions");
 set_metadata_recursive("/system/etc/init.d", "uid", 0, "gid", 2000, "dmode", 0755, "fmode", 0755, "capabilities", 0x0, "selabel", "u:object_r:system_file:s0");
@@ -70,6 +111,7 @@ set_metadata_recursive("/system/xbin", "uid", 0, "gid", 2000, "dmode", 0755, "fm
 set_progress(0.50);
 
 # RAMDISK PATCHES
+# ---------------
 ui_print(" ");
 ui_print("@Patching Ramdisk");
 package_extract_dir("oxygenkernel/anykernel2", "/tmp/ak2");
@@ -81,6 +123,7 @@ delete_recursive("/tmp/ak2");
 set_progress(0.60);
 
 # INSTALL SUPERSU
+# ---------------
 if file_getprop("/tmp/aroma/supersu.prop","install") == "1"
 then
 	ui_print(" ");
@@ -106,6 +149,7 @@ endif;
 set_progress(0.70);
 
 # INSTALL MAGISK
+# --------------
 if file_getprop("/tmp/aroma/magisk.prop","install") == "1"
 then
 	ui_print(" ");
@@ -130,6 +174,7 @@ endif;
 set_progress(0.80);
 
 # INSTALL BUSYBOX
+# ---------------
 ui_print(" ");
 ui_print("@Installing Busybox");
 package_extract_dir("oxygenkernel/busybox", "/tmp/bb");
@@ -151,6 +196,7 @@ endif;
 set_progress(0.90);
 
 # FINISH
+# ------
 ui_print(" ");
 ui_print("@Unmounting Partitions");
 ifelse(is_mounted("/system"), unmount("/system"));
