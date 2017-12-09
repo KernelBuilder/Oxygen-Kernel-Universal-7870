@@ -83,3 +83,4 @@ int module_finalize(const Elf_Ehdr *hdr,
 void module_arch_cleanup(struct module *mod);
 
 #endif
+
